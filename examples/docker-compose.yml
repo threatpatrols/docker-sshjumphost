@@ -1,5 +1,7 @@
 version: "3.6"
+
 services:
+
   bastion:
     image: binlab/bastion
     container_name: bastion
@@ -10,7 +12,7 @@ services:
     ports:
       - 22222:22/tcp
     volumes:
-      - $PWD/authorized_keys:/var/lib/bastion/authorized_keys:ro
+      - $HOME/.ssh/authorized_keys:/var/lib/bastion/authorized_keys:ro
       - bastion:/usr/etc/ssh:rw
     extra_hosts:
       - docker-host:172.17.0.1
@@ -25,7 +27,7 @@ services:
     expose:
       - 22/tcp
     volumes:
-      - $PWD/authorized_keys:/var/lib/bastion/authorized_keys:ro
+      - $HOME/.ssh/authorized_keys:/var/lib/bastion/authorized_keys:ro
       - docker-ssh:/usr/etc/ssh:rw
     networks:
       - bastion

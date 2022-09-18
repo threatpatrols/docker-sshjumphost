@@ -1,0 +1,50 @@
+image: docker:20.10.16
+
+services:
+  - name: docker:20.10.16-dind
+    alias: docker
+
+stages:
+  - build-push
+
+build-dev:
+  stage: build-push
+  script:
+    - IMAGE_TAG=dev
+    - docker info
+    - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
+    - docker build --pull -t "${CI_REGISTRY}/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}:${IMAGE_TAG}" .
+    - docker push "${CI_REGISTRY}/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}:${IMAGE_TAG}"
+  only:
+    - dev
+  tags:
+    - shared
+    - docker
+
+build-main:
+  stage: build-push
+  script:
+    - IMAGE_TAG=latest
+    - docker info
+    - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
+    - docker build --pull -t "${CI_REGISTRY}/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}:${IMAGE_TAG}" .
+    - docker push "${CI_REGISTRY}/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}:${IMAGE_TAG}"
+  only:
+    - main
+  tags:
+    - shared
+    - docker
+
+build-tagged:
+  stage: build-push
+  script:
+    - IMAGE_TAG=${CI_COMMIT_TAG#v}
+    - docker info
+    - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
+    - docker build --pull -t "${CI_REGISTRY}/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}:${IMAGE_TAG}" .
+    - docker push "${CI_REGISTRY}/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}:${IMAGE_TAG}"
+  only:
+    - /^v(\d+\.)?(\d+\.)?(\*|\d+)$/
+  tags:
+    - shared
+    - docker
