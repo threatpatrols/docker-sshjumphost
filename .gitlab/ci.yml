@@ -1,7 +1,8 @@
 image: docker:20.10.16
 
 services:
-  - docker:20.10.16-dind
+  - name: docker:20.10.16-dind
+    alias: docker
 
 stages:
   - build-push
