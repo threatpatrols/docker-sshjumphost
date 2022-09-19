@@ -9,7 +9,6 @@ COPY sshjumphost /usr/sbin/sshjumphost
 RUN set -x \
     && apk add --no-cache openssh-server \
     && apk add --no-cache openssh-client \
-    && apk add --no-cache iftop \
     && echo "# " > /etc/motd \
     && echo "# sshjumphost: refer to documentation" >> /etc/motd \
     && echo "# https://hub.docker.com/r/threatpatrols/sshjumphost" >> /etc/motd \
