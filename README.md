@@ -1,194 +1,187 @@
 # sshjumphost
-Forked from: https://github.com/binlab/docker-bastion
+A fancy sshjumphost (bastion host) that makes it easy for ssh-key or user-ca-key 
+based authentication.
+
+By default, sshjumphost does not provide any login-shell since the intent is 
+to __jump__ from the sshjumphost to another.  This can be overridden by setting 
+the `SSH_SHELL` environment variable if required.  All TCP port forwarding 
+and `-J` style jumphost functionality is still possible in this arrangement.
+
+The sshjumphost container provides good visibility to STDOUT making it easy to
+monitor via your container-environment logging etc.
+```
+dev-host01-1  | ssh-keygen: generating new host keys: RSA DSA ECDSA ED25519
+dev-host01-1  | hostname: 0bf40e5b195f
+dev-host01-1  | ip addr: inet 192.168.112.2/20 brd 192.168.127.255 scope global eth0
+dev-host01-1  | username: awesome
+dev-host01-1  | sshkey-fingerprints:
+dev-host01-1  | 4096 SHA256:BjNltbmmfjBAF6/liSr+7NANEWzbyDvLJ6w7eTA928c (RSA)
+dev-host01-1  | hostkey-fingerprints:
+dev-host01-1  | 1024 SHA256:eXQcmDnDi2ydn+DAtLW0hGu9uXU5HTDKjNnrptyunFo root@0bf40e5b195f (DSA)
+dev-host01-1  | 256 SHA256:8tIwmrhrK8+ZLw34B+OtVvOQe976d9mRByNpgnRR2FM root@0bf40e5b195f (ECDSA)
+dev-host01-1  | 256 SHA256:eoCSPJQMzNcmTZcaE0ge3EL4XbmTW8Y0bGqTZZ0Byk8 root@0bf40e5b195f (ED25519)
+dev-host01-1  | 3072 SHA256:cOue3Ig4hFIYWaHW1Xm3jv923+tkDAUeICw6Kk/R7gs root@0bf40e5b195f (RSA)
+dev-host01-1  | sshd_command: /usr/sbin/sshd -D -e -4 -o PasswordAuthentication=no -o PermitEmptyPasswords=no -o PermitRootLogin=no -o AuthorizedKeysFile=/data/home/.ssh/authorized_keys -o HostKey=/data/hostkeys/ssh_host_dsa_key -o HostKey=/data/hostkeys/ssh_host_ecdsa_key -o HostKey=/data/hostkeys/ssh_host_ed25519_key -o HostKey=/data/hostkeys/ssh_host_rsa_key -o PubkeyAuthentication=yes -o GatewayPorts=no -o PermitTunnel=no -o X11Forwarding=no -o AllowTcpForwarding=yes -o AllowAgentForwarding=yes -o ListenAddress=0.0.0.0 -o Port=22 -o LogLevel=INFO
+dev-host01-1  | Server listening on 0.0.0.0 port 22.
+```
+
+This project originally forked from [binlab/docker-bastion](https://github.com/binlab/docker-bastion) and
+significantly modified - thanks Mark for the base to work from.
 
 ## env variables
 
-### `PUBKEY_AUTHENTICATION [true | false]`
-Specifies whether public key authentication is allowed. The default is `true`. Note that this option applies to protocol version 2 only.
+### `SSH_USERNAME [<username>]`
+* Default: `sshjumphost`
 
-### `AUTHORIZED_KEYS [/relative/or/not/path/to/file]`
-Specifies the file that contains the public keys that can be used for user authentication. `AUTHORIZED_KEYS` may contain tokens of the form `%T` which are substituted during connection setup. The following tokens are defined: `%%` is replaced by a literal `%`, `%h` is replaced by the home directory of the user being authenticated, and `%u` is replaced by the username of that user. After expansion, `AUTHORIZED_KEYS` is taken to be an absolute path or one relative to the user's home directory. The default file is `authorized_keys` and the default home directory is `/var/lib/bastion` and should be present by Docker volume mount by `-v $PWD/authorized_keys:/var/lib/bastion/authorized_keys:ro`.
+Change the username to suit your purposes.
 
-### `TRUSTED_USER_CA_KEYS [/full/path/to/file]`
-Specifies a file containing public keys of certificate authorities that are trusted to sign user certificates for authentication, or none to not use one. Keys are listed one per line; empty lines and comments starting with `#` are allowed. If a certificate is presented for authentication and has its signing CA key listed in this file, then it may be used for authentication for any user listed in the certificate's principals list. Note that certificates that lack a list of principals will not be permitted for authentication using `TRUSTED_USER_CA_KEYS`. Directive `AuthorizedPrincipalsFile` hardcoded to `/etc/ssh/auth_principals/%u` and in time of build and generated one principals file for presented user - `/etc/ssh/auth_principals/bastion` with the one row `bastion`, and this principal should be listed in the certificate's principals list.
+### `SSH_AUTHORIZED_KEYS [<sshkey-value> | <filepath>]`
+* Default: `/data/userkeys/authorized_keys`
 
-### `GATEWAY_PORTS [true | false]`
-Specifies whether remote hosts are allowed to connect to ports forwarded for the client. By default, `sshd` binds remote port forwardings to the loopback address. This prevents other remote hosts from connecting to forwarded ports. `GATEWAY_PORTS` can be used to specify that `sshd` should allow remote port forwardings to bind to non-loopback addresses, thus allowing other hosts to connect. The argument may be `false` to force remote port forwardings to be available to the local host only, `true` to force remote port forwardings to bind to the wildcard address. The default is `false`.
+Can be either the __actual__ ssh-key string-value -or- set as the pathname
+to the volume-mounted public-key(s) if you mount the keys at a location other
+than the default.
 
-### `PERMIT_TUNNEL [true | false]`
-Specifies whether `tun` device forwarding is allowed. The argument must be `true` or `false`. Specifying `true` permits both `point-to-point` (layer 3) and `ethernet` (layer 2). The default is `false`.
+Recall that it is possible to set this value with more than one ssh-public 
+key, using one key per line.
 
-### `X11_FORWARDING [true | false]`
-Specifies whether `X11` forwarding is permitted. The argument must be `true` or `false`. The default is `false`.
+### `SSH_SHELL [<filename>]`
+* Default: `/bin/dd`
 
-### `TCP_FORWARDING [true | false]`
-Specifies whether `TCP` forwarding is permitted. The default is `true`. Note that disabling `TCP` forwarding does not improve security unless users are also denied shell access, as they can always install their own forwarders.
+By default, the sshjumphost user shell is set to `/bin/dd` that establishes a
+session that does not terminate unless user-interrupted (eg CONTROL-C).  This hence
+creates a sshjumphost cannot be repurposed for other usage beyond the intended 
+__jumphost__ capability.
 
-### `AGENT_FORWARDING [true | false]`
-Specifies whether `ssh-agent` forwarding is permitted. The default is `true`. Note that disabling agent forwarding does not improve security unless users are also denied shell access, as they can always install their own forwarders.
+By setting the `SSH_SHELL` environment variable to `/bin/ash` it is possible to
+gain a login-shell on the sshjumphost if required for some reason. 
 
-### `LISTEN_ADDRESS [0.0.0.0]`
-Specifies the local addresses should listen on. By default it **0.0.0.0**. Useful when Docker container runs in `Host mode`
+### `SSHD_TRUSTED_USER_CA_KEYS [<cakey-value> | <filepath>]`
+* Default: `/data/cakeys/trusted_keys`
 
-### `LISTEN_PORT [22]`
-Specifies the port number that listens on. The default is **22**. Useful when Docker container runs in `Host mode`
+Can be either the __actual__ ca-key string-value -or- set as the pathname
+to the volume-mounted ca-key if you mount the key at a location other than
+the default.
 
-###  Run Bastion and `expose` port `22222` to outside a host machine
+The associated `AuthorizedPrincipalsFile` is read from `/data/cakeys/authorized_principals` and
+if this file does not already exist (eg via a volume-mount) then it is populated
+with a single entry for the `SSH_USERNAME`
 
-The container assumes your `authorized_keys` file with `644` permissions and mounted under `/var/lib/bastion/authorized_keys`.
+Using this mechanism it is possible to operate the sshjumphost in a way that 
+accommodates multiple usernames authenticated through their individual user-keys 
+that have been signed by the certificate authority.
 
-Docker example:
+### `SSHD_GATEWAY_PORTS [yes | no]`
+* Default: `no`
 
-```shell
-$ docker volume create bastion
-$ docker run -d \
-    --name bastion \
-    --hostname bastion \
-    --restart unless-stopped \
-    -v $PWD/authorized_keys:/var/lib/bastion/authorized_keys:ro \
-    -v bastion:/usr/etc/ssh:rw \
-    --add-host docker-host:172.17.0.1 \
-    -p 22222:22/tcp \
-    -e "PUBKEY_AUTHENTICATION=true" \
-    -e "GATEWAY_PORTS=false" \
-    -e "PERMIT_TUNNEL=false" \
-    -e "X11_FORWARDING=false" \
-    -e "TCP_FORWARDING=true" \
-    -e "AGENT_FORWARDING=true" \
-    binlab/bastion
-```
+Specifies whether remote hosts are allowed to connect to ports forwarded for the 
+client (ie reverse tunneling)
+* https://man.openbsd.org/sshd_config#GatewayPorts
 
-Docker-compose example:
+### `SSHD_PERMIT_TUNNEL [yes | no]`
+* Default: `no`
+
+Specifies whether tun(4) device forwarding is allowed - NB: this is typically __not__ what you 
+want if you are just looking for TCP port-forwarding.
+* https://man.openbsd.org/sshd_config#PermitTunnel
+
+### `SSHD_X11_FORWARDING [yes | no]`
+* Default: `no`
+
+Specifies whether X11 forwarding is permitted.
+* https://man.openbsd.org/sshd_config#X11Forwarding
+
+### `SSHD_ALLOW_TCP_FORWARDING [yes | no]`
+* Default: `yes`
+
+Specifies whether TCP forwarding is permitted.
+* https://man.openbsd.org/sshd_config#AllowTcpForwarding
+
+### `SSHD_ALLOW_AGENT_FORWARDING [yes | no]`
+* Default: `yes`
+
+Specifies whether ssh-agent forwarding is permitted.
+* https://man.openbsd.org/sshd_config#AllowAgentForwarding
+
+### `SSHD_LISTEN_ADDRESS [<ipv4-address>]`
+* Default: `0.0.0.0`
+
+Specifies the local addresses sshd(8) should listen on.
+* https://man.openbsd.org/sshd_config#ListenAddress
+
+### `SSHD_LISTEN_PORT [<port-number>]`
+* Default: `22`
+
+Specifies the TCP port number that sshd(8) listens on.
+* https://man.openbsd.org/sshd_config#Port
+
+### `SSHD_LOGLEVEL [<log-level>]`
+* Default: `INFO`
+
+Gives the verbosity level that is used when logging messages from sshd(8).
+* https://man.openbsd.org/sshd_config#LogLevel
+
+---
+
+## Docker-compose example
 
 ```yaml
-version: "3.6"
+version: "3"
+
 services:
-  bastion:
-    image: binlab/bastion
-    container_name: bastion
-    hostname: bastion
+
+  externalhost01:
+    image: docker.io/threatpatrols/docker-sshjumphost
     restart: unless-stopped
     expose:
       - 22/tcp
     ports:
       - 22222:22/tcp
-    environment:
-      PUBKEY_AUTHENTICATION: "true"
-      GATEWAY_PORTS: "false"
-      PERMIT_TUNNEL: "false"
-      X11_FORWARDING: "false"
-      TCP_FORWARDING: "true"
-      AGENT_FORWARDING: "true"
-    volumes:
-      - $PWD/authorized_keys:/var/lib/bastion/authorized_keys:ro
-      - bastion:/usr/etc/ssh:rw
-    extra_hosts:
-      - docker-host:172.17.0.1
     networks:
-      - bastion
+      - awesome_network
+    environment:
+      SSH_USERNAME: "awesome"
+      SSH_AUTHORIZED_KEYS: "sk-ecdsa-sha2-nistp256@openssh.com xxxxxxxxxxxxxxxxxxxxxxxxx"
+
+  internalhost01:
+    image: docker.io/threatpatrols/docker-sshjumphost
+    restart: unless-stopped
+    expose:
+      - 22/tcp
+    volumes:
+      - "/home/awesome/.ssh/authorized_keys:/data/userkeys/awesome_authorized_keys:ro"
+    networks:
+      - awesome_network
+    environment:
+      SSH_USERNAME: "awesome"
+      SSH_SHELL: "/bin/ash"
+      SSH_AUTHORIZED_KEYS: "/data/userkeys/awesome_authorized_keys"
 
 networks:
-  bastion:
+  awesome_network:
     driver: bridge
-    
-volumes:
-  bastion:
 ```
 
-_* When you are run `Bastion` container first time it generates `dsa`, `ecdsa`, `ed25519` and `rsa` key pair and saves them in permanent volume `bastion`, When you need to regenerate key pair, you should remove volume `bastion`._
+Starting this docker-compose creates 2x docker-containers, where `externalhost01`
+is reachable via localhost on tcp-22222 and `internalhost01` that is only reachable
+via connectivity to the `awesome_network`
 
-### 1. Connect to  `Bastion`
-
----
-
-* Add your user to group `docker` to have possibility run `docker-compose` and `docker` from your user without `sudo`. After you should re-login or open a new terminal window.
-
-```shell
-$ sudo usermod -aG docker <your_user>
-```
-
-* Create custom work dir e.g. `docker`, enter to it and clone repository
-
-```shell
-$ mkdir $HOME/docker 
-$ cd $HOME/docker
-$ git clone https://github.com/binlab/docker-bastion.git
-$ cd docker-bastion
-```
-
-* Generate `rsa` pair (if you have one, skip this)
-
-```shell
-$ ssh-keygen -t rsa -b 4096 -C "your_email@example.com" -f $HOME/.ssh/id_rsa
-```
-
-* Add `rsa` public key to `.bastion_keys` file
-
-```shell
-$ cat $HOME/.ssh/id_rsa.pub > $PWD/.bastion_keys
-```
-
-* Run [`docker-compose.yml`](docker-compose.yml) configuration - `bastion` & `docker-ssh`
-
-```shell
-$ docker-compose up
-```
-
-* And then you are can connect to it (in another terminal window)
-
-```shell
-$ ssh -i $HOME/.ssh/id_rsa -p 22222 bastion@127.0.0.1
-```
-
-* You should see like this:
-
-```shell
-user@localhost:~$ ssh -p 22222 bastion@127.0.0.1
-The authenticity of host '[127.0.0.1]:22222 ([127.0.0.1]:22222)' can't be established.
-ECDSA key fingerprint is 
-SHA256:********************************************
-ECDSA key fingerprint is MD5:**:**:**:**:**:**:**:**:**:**:**:**:**:**:**:**.
-Are you sure you want to continue connecting (yes/no)? yes
-Warning: Permanently added '[127.0.0.1]:22222' (ECDSA) to the list of known hosts.
-Welcome to Alpine!
-
-The Alpine Wiki contains a large amount of how-to guides and general
-information about administrating Alpine systems.
-See <http://wiki.alpinelinux.org>.
-
-You can setup the system with the command: setup-alpine
-
-You may change this message by editing /etc/motd.
-
-bastion:~$ 
-```
-
-### 2. Connect to `Host` through `Bastion`
-
----
-
-To achieve this you should add your private key to `SSH` agent and turn on `ForwardAgent` in `~/.ssh/config` or from a command line via flag `-A`
-
-> -A option enables forwarding of the authentication agent connection.
->
-> It means that, it forwards your SSH auth schema to the remote host. > So you can use SSH over there as if you were on your local machine.
-
-* Add private key to `SSH` agent
-
-```shell
-$ ssh-add $HOME/.ssh/id_rsa
-```
-
-* Test `Bastion` bridge in action
-
-```shell
-$ ssh -A -J bastion@127.0.0.1:22222 <your_user>@docker-host
-```
-
-### 3. Connect to another container with `SSH` through `Bastion`
-
----
-
-```shell
-$ ssh -A -J bastion@127.0.0.1:22222 bastion@docker-ssh
+It is now possible to reach `internalhost01` by using the `-J` switch to jump 
+through `externalhost01` located at 127.0.0.1:22222 - note in the example provided
+the `SSH_SHELL` has been set on the `internalhost01` which provides the shell prompt
+as shown below.
+```commandline
+user@computer ~/$ ssh -J 127.0.0.1:22222 internalhost01
+The authenticity of host 'internalhost01 (<no hostip for proxy command>)' can't be established.
+ED25519 key fingerprint is SHA256:eoCSPJQMzNcmTZcaE0ge3EL4XbmTW8Y0bGqTZZ0Byk8.
+This key is not known by any other names
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+Warning: Permanently added 'internalhost01' (ED25519) to the list of known hosts.
+#
+# sshjumphost: refer to documentation
+# https://hub.docker.com/r/threatpatrols/sshjumphost
+#
+# NB: set the SSH_SHELL environment variable to enable a login-shell at the sshjumphost.
+#
+0bf40e5b195f:~$
 ```

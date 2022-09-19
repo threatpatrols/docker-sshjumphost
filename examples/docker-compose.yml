@@ -1,41 +1,34 @@
-version: "3.6"
+version: "3"
 
 services:
 
-  bastion:
-    image: binlab/bastion
-    container_name: bastion
-    hostname: bastion
+  externalhost01:
+    image: docker.io/threatpatrols/docker-sshjumphost
     restart: unless-stopped
     expose:
       - 22/tcp
     ports:
       - 22222:22/tcp
-    volumes:
-      - $HOME/.ssh/authorized_keys:/var/lib/bastion/authorized_keys:ro
-      - bastion:/usr/etc/ssh:rw
-    extra_hosts:
-      - docker-host:172.17.0.1
     networks:
-      - bastion
+      - awesome_network
+    environment:
+      SSH_USERNAME: "awesome"
+      SSH_AUTHORIZED_KEYS: "sk-ecdsa-sha2-nistp256@openssh.com xxxxxxxxxxxxxxxxxxxxxxxxx"
 
-  docker-ssh:
-    image: binlab/bastion
-    container_name: docker-ssh
-    hostname: docker-ssh
+  internalhost01:
+    image: docker.io/threatpatrols/docker-sshjumphost
     restart: unless-stopped
     expose:
       - 22/tcp
     volumes:
-      - $HOME/.ssh/authorized_keys:/var/lib/bastion/authorized_keys:ro
-      - docker-ssh:/usr/etc/ssh:rw
+      - "/home/awesome/.ssh/authorized_keys:/data/userkeys/awesome_authorized_keys:ro"
     networks:
-      - bastion
+      - awesome_network
+    environment:
+      SSH_USERNAME: "awesome"
+      SSH_SHELL: "/bin/ash"
+      SSH_AUTHORIZED_KEYS: "/data/userkeys/awesome_authorized_keys"
 
 networks:
-  bastion:
+  awesome_network:
     driver: bridge
-    
-volumes:
-  bastion:
-  docker-ssh:

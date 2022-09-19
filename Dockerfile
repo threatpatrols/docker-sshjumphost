@@ -2,31 +2,28 @@ FROM alpine:3.16.2
 
 LABEL maintainer="Nicholas de Jong <ndejong@threatpatrols.com>"
 
-ARG HOME=/var/lib/bastion
+ENV DATA_PATH="/data"
 
-ARG USER=bastion
-ARG GROUP=bastion
-ARG UID=4096
-ARG GID=4096
+COPY sshjumphost /usr/sbin/sshjumphost
 
-ENV HOST_KEYS_PATH_PREFIX="/usr"
-ENV HOST_KEYS_PATH="${HOST_KEYS_PATH_PREFIX}/etc/ssh"
-
-COPY bastion /usr/sbin/bastion
-
-RUN addgroup -S -g ${GID} ${GROUP} \
-    && adduser -D -h ${HOME} -s /bin/ash -g "${USER} service" -u ${UID} -G ${GROUP} ${USER} \
-    && sed -i "s/${USER}:!/${USER}:*/g" /etc/shadow \
-    && set -x \
+RUN set -x \
     && apk add --no-cache openssh-server \
-    && echo "Welcome to the sshjumphost!" > /etc/motd \
-    && chmod +x /usr/sbin/bastion \
-    && mkdir -p ${HOST_KEYS_PATH} \
-    && mkdir /etc/ssh/auth_principals \
-    && echo "bastion" > /etc/ssh/auth_principals/bastion
+    && apk add --no-cache openssh-client \
+    && apk add --no-cache iftop \
+    && echo "# " > /etc/motd \
+    && echo "# sshjumphost: refer to documentation" >> /etc/motd \
+    && echo "# https://hub.docker.com/r/threatpatrols/sshjumphost" >> /etc/motd \
+    && echo "# " >> /etc/motd \
+    && echo "# NB: set the SSH_SHELL environment variable to enable a login-shell at the sshjumphost." >> /etc/motd \
+    && echo "# " >> /etc/motd \
+    && chmod +x /usr/sbin/sshjumphost \
+    && mkdir -p ${DATA_PATH}/cakeys \
+    && mkdir -p ${DATA_PATH}/hostkeys \
+    && mkdir -p ${DATA_PATH}/userkeys \
+    && mkdir -p ${DATA_PATH}/home \
 
 EXPOSE 22/tcp
 
-VOLUME ${HOST_KEYS_PATH}
+VOLUME ${DATA_PATH}/hostkeys
 
-ENTRYPOINT ["bastion"]
+ENTRYPOINT ["sshjumphost"]

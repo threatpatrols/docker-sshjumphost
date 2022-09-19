@@ -1,0 +1,190 @@
+#!/usr/bin/env sh
+
+DATA_PATH="/data"
+USER_PATH="${DATA_PATH}/home"
+USER_SHELL="/bin/dd"
+USER_USERNAME="sshjumphost"
+USER_AUTHORIZED_KEYS_FILE="${DATA_PATH}/userkeys/authorized_keys"
+SERVER_TRUSTED_USER_CA_KEYS_FILE="${DATA_PATH}/cakeys/trusted_keys"
+SERVER_AUTHORIZED_PRINCIPALS_FILE="${DATA_PATH}/cakeys/authorized_principals"
+
+# =============================================================================
+
+if [ -n "${SSH_USERNAME}" ]; then
+  USER_USERNAME=$(echo "${SSH_USERNAME}" | tr -cd '0-9A-Za-z' | head -c32 | tr '[:upper:]' '[:lower:]')
+fi
+
+if [ -n "${SSH_AUTHORIZED_KEYS}" ]; then
+  if [ -f "${SSH_AUTHORIZED_KEYS}" ]; then
+    USER_AUTHORIZED_KEYS_FILE="${SSH_AUTHORIZED_KEYS}"
+  else
+    echo "${SSH_AUTHORIZED_KEYS}" > "${USER_AUTHORIZED_KEYS_FILE}"
+  fi
+fi
+
+if [ -n "${SSH_SHELL}" ]; then
+  if [ -f "${SSH_SHELL}" ]; then
+    USER_SHELL="${SSH_SHELL}"
+  else
+    echo "WARNING: SSH_SHELL supplied but ${SSH_SHELL} is not available; did you try '/bin/ash'?"
+  fi
+fi
+
+# =============================================================================
+
+# https://man.openbsd.org/sshd_config#TrustedUserCAKeys
+if [ -n "${SSHD_TRUSTED_USER_CA_KEYS}" ]; then
+  if [ -f "${SSHD_TRUSTED_USER_CA_KEYS}" ]; then
+    SERVER_TRUSTED_USER_CA_KEYS_FILE="${SSHD_TRUSTED_USER_CA_KEYS}"
+  else
+    echo "${SSHD_TRUSTED_USER_CA_KEYS}" > "${SERVER_TRUSTED_USER_CA_KEYS_FILE}"
+  fi
+fi
+
+# https://man.openbsd.org/sshd_config#PubkeyAuthentication
+if [ "$SSHD_PUBKEY_AUTHENTICATION" = "no" ]; then
+    CONFIG_PUBKEY_AUTHENTICATION="-o PubkeyAuthentication=no"
+else
+    CONFIG_PUBKEY_AUTHENTICATION="-o PubkeyAuthentication=yes"
+fi
+
+# https://man.openbsd.org/sshd_config#GatewayPorts
+if [ "$SSHD_GATEWAY_PORTS" = "yes" ]; then
+    CONFIG_GATEWAY_PORTS="-o GatewayPorts=yes"
+else
+    CONFIG_GATEWAY_PORTS="-o GatewayPorts=no"
+fi
+
+# https://man.openbsd.org/sshd_config#PermitTunnel
+if [ "$SSHD_PERMIT_TUNNEL" = "yes" ]; then
+    CONFIG_PERMIT_TUNNEL="-o PermitTunnel=yes"
+else
+    CONFIG_PERMIT_TUNNEL="-o PermitTunnel=no"
+fi
+
+# https://man.openbsd.org/sshd_config#X11Forwarding
+if [ "$SSHD_X11_FORWARDING" = "yes" ]; then
+    CONFIG_X11_FORWARDING="-o X11Forwarding=yes"
+else
+    CONFIG_X11_FORWARDING="-o X11Forwarding=no"
+fi
+
+# https://man.openbsd.org/sshd_config#AllowTcpForwarding
+if [ "$SSHD_ALLOW_TCP_FORWARDING" = "no" ]; then
+    CONFIG_ALLOW_TCP_FORWARDING="-o AllowTcpForwarding=no"
+else
+    CONFIG_ALLOW_TCP_FORWARDING="-o AllowTcpForwarding=yes"
+fi
+
+# https://man.openbsd.org/sshd_config#AllowAgentForwarding
+if [ "$SSHD_ALLOW_AGENT_FORWARDING" = "no" ]; then
+    CONFIG_ALLOW_AGENT_FORWARDING="-o AllowAgentForwarding=no"
+else
+    CONFIG_ALLOW_AGENT_FORWARDING="-o AllowAgentForwarding=yes"
+fi
+
+# https://man.openbsd.org/sshd_config#ListenAddress
+if [ -n "$SSHD_LISTEN_ADDRESS" ]; then
+    CONFIG_LISTEN_ADDRESS="-o ListenAddress=$(echo "${SSHD_LISTEN_ADDRESS}" | tr -cd '.:0-9' | head -c32)"
+else
+    CONFIG_LISTEN_ADDRESS="-o ListenAddress=0.0.0.0"
+fi
+
+# https://man.openbsd.org/sshd_config#Port
+if [ -n "$SSHD_LISTEN_PORT" ]; then
+    CONFIG_LISTEN_PORT="-o Port=$(echo "${SSHD_LISTEN_PORT}" | tr -cd '0-9' | head -c8)"
+else
+    CONFIG_LISTEN_PORT="-o Port=22"
+fi
+
+# https://man.openbsd.org/sshd_config#LogLevel
+if [ -n "$SSHD_LOGLEVEL" ]; then
+    CONFIG_LOGLEVEL="-o LogLevel=$(echo "${SSHD_LOGLEVEL}" | tr -cd '0-9A-Za-z' | head -c32)"
+else
+    CONFIG_LOGLEVEL="-o LogLevel=INFO"
+fi
+
+# =============================================================================
+
+# create user if not already exists
+if [ "$(id -u ${USER_USERNAME} 2>&1 | grep -v unknown | wc -l)" -eq 0 ]; then
+  addgroup -S -g 4095 "${USER_USERNAME}"
+  adduser -D -h "${USER_PATH}" -s "${USER_SHELL}" -g "sshjumphost user" -u 4095 -G "${USER_USERNAME}" "${USER_USERNAME}"
+  sed -i "s/${USER_USERNAME}:!/${USER_USERNAME}:*/g" /etc/shadow
+fi
+
+# establish user authorized_keys file
+if [ -f "${USER_AUTHORIZED_KEYS_FILE}" ]; then
+  mkdir -p "${USER_PATH}/.ssh"
+  cp "${USER_AUTHORIZED_KEYS_FILE}" "${USER_PATH}/.ssh/authorized_keys"
+  chmod 600 "${USER_PATH}/.ssh/authorized_keys"
+  USER_AUTHORIZED_KEYS_FINGERPRINTS="$(ssh-keygen -lf ${USER_PATH}/.ssh/authorized_keys)"
+else
+  echo "WARNING: authorized_keys is not available at ${USER_AUTHORIZED_KEYS_FILE}"
+fi
+
+# set user ownership
+chown -R "${USER_USERNAME}":"${USER_USERNAME}" "${USER_PATH}"
+
+# configure the trusted-user-CA-keys-file and the authorized-principals-file if the CA file exists
+if [ -f "${SERVER_TRUSTED_USER_CA_KEYS_FILE}" ]; then
+  CONFIG_TRUSTED_USER_CA_KEYS="-o TrustedUserCAKeys=$SERVER_TRUSTED_USER_CA_KEYS_FILE"
+  if [ ! -f "${SERVER_AUTHORIZED_PRINCIPALS_FILE}" ]; then
+    echo "${USER_USERNAME}" > "${SERVER_AUTHORIZED_PRINCIPALS_FILE}"
+  fi
+  CONFIG_AUTHORIZED_PRINCIPALS_FILE="-o AuthorizedPrincipalsFile=${SERVER_AUTHORIZED_PRINCIPALS_FILE}"
+fi
+
+# generate the hostkeys if nothing exists
+if [ "$(ls -1 ${DATA_PATH}/hostkeys/ | wc -l)" -lt 1 ]; then
+  mkdir -p "${DATA_PATH}/tmp/etc/ssh"
+  /usr/bin/ssh-keygen -A -f "${DATA_PATH}/tmp"
+  mv ${DATA_PATH}/tmp/etc/ssh/* ${DATA_PATH}/hostkeys
+  rm -Rf "${DATA_PATH}/tmp"
+fi
+
+# configure the hostkeys and collect the hostkey fingerprints
+CONFIG_HOSTKEYS=""
+rm -f "${DATA_PATH}/hostkeys/hostkey.fingerprints"
+for hostkey_file in ${DATA_PATH}/hostkeys/ssh_host_*
+do
+  if [ "$(echo ${hostkey_file} | grep -c 'pub$')" -eq 1 ]; then
+    ssh-keygen -l -f "${hostkey_file}" >> "${DATA_PATH}/hostkeys/hostkey.fingerprints"
+  else
+    CONFIG_HOSTKEYS="${CONFIG_HOSTKEYS} -o HostKey=${hostkey_file}"
+  fi
+done
+
+# =============================================================================
+
+# display information about the sshd making
+echo "hostname: $(hostname)"
+echo "ip addr: $(ip addr | grep 'inet ' | grep -v ' lo$' | xargs)"
+echo "username: ${USER_USERNAME}"
+echo "sshkey-fingerprints:"
+echo "${USER_AUTHORIZED_KEYS_FINGERPRINTS}"
+echo "hostkey-fingerprints:"
+echo "$(cat ${DATA_PATH}/hostkeys/hostkey.fingerprints)"
+
+# create the command_line used to invoke the sshd
+sshd_command="/usr/sbin/sshd -D -e -4 \
+  -o PasswordAuthentication=no \
+  -o PermitEmptyPasswords=no \
+  -o PermitRootLogin=no \
+  -o AuthorizedKeysFile=${USER_PATH}/.ssh/authorized_keys \
+  ${CONFIG_HOSTKEYS} \
+  ${CONFIG_PUBKEY_AUTHENTICATION} \
+  ${CONFIG_TRUSTED_USER_CA_KEYS} \
+  ${CONFIG_AUTHORIZED_PRINCIPALS_FILE} \
+  ${CONFIG_GATEWAY_PORTS} \
+  ${CONFIG_PERMIT_TUNNEL} \
+  ${CONFIG_X11_FORWARDING} \
+  ${CONFIG_ALLOW_TCP_FORWARDING} \
+  ${CONFIG_ALLOW_AGENT_FORWARDING} \
+  ${CONFIG_LISTEN_ADDRESS} \
+  ${CONFIG_LISTEN_PORT} \
+  ${CONFIG_LOGLEVEL}
+"
+
+echo "sshd_command: $(echo ${sshd_command} | xargs)"
+${sshd_command}
