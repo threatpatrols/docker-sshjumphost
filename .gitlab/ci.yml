@@ -31,13 +31,11 @@ build-dev:
   before_script:
     - export RUNNER_TIMESTAMP="$(date -u +%Y%m%d%H%M%Sz)"
   script:
-    - echo "COMMIT_REF = ${COMMIT_REF}"
-    - echo "COMMIT_HASH = ${CI_COMMIT_SHORT_SHA}"
-    - echo "RUNNER_TIMESTAMP = ${RUNNER_TIMESTAMP}"
-
+    - export BUILD_TAG="${CI_REGISTRY_IMAGE//docker-}/${CI_COMMIT_BRANCH}:${RUNNER_TIMESTAMP}-${COMMIT_REF}"
+    - echo "BUILD_TAG = ${BUILD_TAG}"
     - echo "${CI_REGISTRY_PASSWORD}" | docker login --password-stdin -u "${CI_REGISTRY_USER}" "${CI_REGISTRY}"
-    - docker build --pull --tag "${CI_REGISTRY_IMAGE}/${CI_COMMIT_BRANCH}:${RUNNER_TIMESTAMP}-${COMMIT_REF}" --build-arg COMMIT_REF=${COMMIT_REF} --build-arg COMMIT_HASH=${COMMIT_HASH} .
-    - docker push "${CI_REGISTRY_IMAGE}/${CI_COMMIT_BRANCH}:${RUNNER_TIMESTAMP}-${COMMIT_REF}"
+    - docker build --pull --tag "${BUILD_TAG}" --build-arg COMMIT_REF=${COMMIT_REF} --build-arg COMMIT_HASH=${COMMIT_HASH} .
+    - docker push "${BUILD_TAG}"
     - docker logout
 
 # =============================================================================
@@ -53,17 +51,18 @@ build-latest:
     - docker
     - "${RUNNER_INFRASTRUCTURE}"
   script:
-    - echo "COMMIT_REF = ${COMMIT_REF}"
-    - echo "COMMIT_HASH = ${CI_COMMIT_SHORT_SHA}"
-
+    - export BUILD_TAG="${CI_REGISTRY_IMAGE//docker-}:${COMMIT_REF}"
+    - echo "BUILD_TAG = ${BUILD_TAG}"
     - echo "${CI_REGISTRY_PASSWORD}" | docker login --password-stdin -u "${CI_REGISTRY_USER}" "${CI_REGISTRY}"
-    - docker build --pull --tag "${CI_REGISTRY_IMAGE}:${COMMIT_REF}" --build-arg COMMIT_REF=${COMMIT_REF} --build-arg COMMIT_HASH=${COMMIT_HASH} .
-    - docker push "${CI_REGISTRY_IMAGE}:${COMMIT_REF}"
+    - docker build --pull --tag "${BUILD_TAG}" --build-arg COMMIT_REF=${COMMIT_REF} --build-arg COMMIT_HASH=${COMMIT_HASH} .
+    - docker push "${BUILD_TAG}"
     - docker logout
 
+    - export BUILD_TAG="${DOCKERHUB_REGISTRY}/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME//docker-}:${COMMIT_REF}"
+    - echo "BUILD_TAG = ${BUILD_TAG}"
     - echo "${DOCKERHUB_PASSWORD}" | docker login --password-stdin -u "${DOCKERHUB_USERNAME}" "${DOCKERHUB_REGISTRY}"
-    - docker build --pull --tag "${DOCKERHUB_REGISTRY}/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}:${COMMIT_REF}" --build-arg COMMIT_REF=${COMMIT_REF} --build-arg COMMIT_HASH=${COMMIT_HASH} .
-    - docker push "${DOCKERHUB_REGISTRY}/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}:${COMMIT_REF}"
+    - docker build --pull --tag "${BUILD_TAG}" --build-arg COMMIT_REF=${COMMIT_REF} --build-arg COMMIT_HASH=${COMMIT_HASH} .
+    - docker push "${BUILD_TAG}"
     - docker logout
 
 # =============================================================================
@@ -79,15 +78,16 @@ build-tagged:
     - docker
     - "${RUNNER_INFRASTRUCTURE}"
   script:
-    - echo "COMMIT_REF = ${COMMIT_REF}"
-    - echo "COMMIT_HASH = ${CI_COMMIT_SHORT_SHA}"
-
+    - export BUILD_TAG="${CI_REGISTRY_IMAGE//docker-}:${COMMIT_REF}"
+    - echo "BUILD_TAG = ${BUILD_TAG}"
     - echo "${CI_REGISTRY_PASSWORD}" | docker login --password-stdin -u "${CI_REGISTRY_USER}" "${CI_REGISTRY}"
-    - docker build --pull --tag "${CI_REGISTRY_IMAGE}:${COMMIT_REF}" --build-arg COMMIT_REF=${COMMIT_REF} --build-arg COMMIT_HASH=${COMMIT_HASH} .
-    - docker push "${CI_REGISTRY_IMAGE}:${COMMIT_REF}"
+    - docker build --pull --tag "${BUILD_TAG}" --build-arg COMMIT_REF=${COMMIT_REF} --build-arg COMMIT_HASH=${COMMIT_HASH} .
+    - docker push "${BUILD_TAG}"
     - docker logout
 
+    - export BUILD_TAG="${DOCKERHUB_REGISTRY}/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME//docker-}:${COMMIT_REF}"
+    - echo "BUILD_TAG = ${BUILD_TAG}"
     - echo "${DOCKERHUB_PASSWORD}" | docker login --password-stdin -u "${DOCKERHUB_USERNAME}" "${DOCKERHUB_REGISTRY}"
-    - docker build --pull --tag "${DOCKERHUB_REGISTRY}/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}:${COMMIT_REF}" --build-arg COMMIT_REF=${COMMIT_REF} --build-arg COMMIT_HASH=${COMMIT_HASH} .
-    - docker push "${DOCKERHUB_REGISTRY}/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}:${COMMIT_REF}"
+    - docker build --pull --tag "${BUILD_TAG}" --build-arg COMMIT_REF=${COMMIT_REF} --build-arg COMMIT_HASH=${COMMIT_HASH} .
+    - docker push "${BUILD_TAG}"
     - docker logout
