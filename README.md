@@ -1,6 +1,6 @@
 # sshjumphost
-A fancy sshjumphost (bastion host) that makes it easy for ssh-key or user-ca-key 
-based authentication.
+A fancy sshjumphost (bastion host) for accessing backend networks; makes easy work of
+setting up ssh-key based or user-ca-key based authentication.
 
 By default, sshjumphost does not provide any login-shell since the intent is 
 to __jump__ from the sshjumphost to another.  This can be overridden by setting 
@@ -128,7 +128,7 @@ version: "3"
 services:
 
   externalhost01:
-    image: docker.io/threatpatrols/docker-sshjumphost
+    image: docker.io/threatpatrols/sshjumphost
     restart: unless-stopped
     expose:
       - 22/tcp
@@ -141,7 +141,7 @@ services:
       SSH_AUTHORIZED_KEYS: "sk-ecdsa-sha2-nistp256@openssh.com xxxxxxxxxxxxxxxxxxxxxxxxx"
 
   internalhost01:
-    image: docker.io/threatpatrols/docker-sshjumphost
+    image: docker.io/threatpatrols/sshjumphost
     restart: unless-stopped
     expose:
       - 22/tcp
@@ -184,7 +184,7 @@ Warning: Permanently added 'internalhost01' (ED25519) to the list of known hosts
 ```
 
 ## Dockerhub
-* https://hub.docker.com/r/threatpatrols/docker-sshjumphost
+* https://hub.docker.com/r/threatpatrols/sshjumphost
 
 ## Source
 * https://github.com/threatpatrols/docker-sshjumphost
