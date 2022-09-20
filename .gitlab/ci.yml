@@ -1,50 +1,90 @@
+
 image: docker:20.10.16
+
+include:
+
+variables:
+  RUNNER_INFRASTRUCTURE: "shared"
 
 services:
   - name: docker:20.10.16-dind
     alias: docker
 
 stages:
-  - build-push
+  - build
+  - test
+  - deploy
+  - analysis
+
+# =============================================================================
 
 build-dev:
-  stage: build-push
-  script:
-    - IMAGE_TAG=dev
-    - docker info
-    - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
-    - docker build --pull -t "${CI_REGISTRY}/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}:${IMAGE_TAG}" .
-    - docker push "${CI_REGISTRY}/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}:${IMAGE_TAG}"
-  only:
-    - dev
+  stage: build
+  rules:
+    - if: $CI_COMMIT_BRANCH == 'dev'
+  variables:
+    COMMIT_REF: "${CI_COMMIT_SHORT_SHA}"
+    COMMIT_HASH: "${CI_COMMIT_SHORT_SHA}"
   tags:
-    - shared
     - docker
+    - "${RUNNER_INFRASTRUCTURE}"
+  script:
+    - echo "COMMIT_REF = ${COMMIT_REF}"
+    - echo "COMMIT_HASH = ${CI_COMMIT_SHORT_SHA}"
 
-build-main:
-  stage: build-push
-  script:
-    - IMAGE_TAG=latest
-    - docker info
-    - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
-    - docker build --pull -t "${CI_REGISTRY}/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}:${IMAGE_TAG}" .
-    - docker push "${CI_REGISTRY}/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}:${IMAGE_TAG}"
-  only:
-    - main
+    - echo "${CI_REGISTRY_PASSWORD}" | docker login --password-stdin -u "${CI_REGISTRY_USER}" "${CI_REGISTRY}"
+    - docker build --pull --tag "${CI_REGISTRY_IMAGE}/${CI_COMMIT_BRANCH}:${COMMIT_REF}" --build-arg COMMIT_REF=${COMMIT_REF} --build-arg COMMIT_HASH=${COMMIT_HASH} .
+    - docker push "${CI_REGISTRY_IMAGE}/${CI_COMMIT_BRANCH}:${COMMIT_REF}"
+    - docker logout
+
+# =============================================================================
+
+build-latest:
+  stage: build
+  rules:
+    - if: $CI_COMMIT_BRANCH == 'latest'
+  variables:
+    COMMIT_REF: "${CI_COMMIT_BRANCH}"
+    COMMIT_HASH: "${CI_COMMIT_SHORT_SHA}"
   tags:
-    - shared
     - docker
+    - "${RUNNER_INFRASTRUCTURE}"
+  script:
+    - echo "COMMIT_REF = ${COMMIT_REF}"
+    - echo "COMMIT_HASH = ${CI_COMMIT_SHORT_SHA}"
+
+    - echo "${CI_REGISTRY_PASSWORD}" | docker login --password-stdin -u "${CI_REGISTRY_USER}" "${CI_REGISTRY}"
+    - docker build --pull --tag "${CI_REGISTRY_IMAGE}:${COMMIT_REF}" --build-arg COMMIT_REF=${COMMIT_REF} --build-arg COMMIT_HASH=${COMMIT_HASH} .
+    - docker push "${CI_REGISTRY_IMAGE}:${COMMIT_REF}"
+    - docker logout
+
+    - echo "${DOCKERHUB_PASSWORD}" | docker login --password-stdin -u "${DOCKERHUB_USERNAME}" "${DOCKERHUB_REGISTRY}"
+    - docker build --pull --tag "${DOCKERHUB_REGISTRY}/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}:${COMMIT_REF}" --build-arg COMMIT_REF=${COMMIT_REF} --build-arg COMMIT_HASH=${COMMIT_HASH} .
+    - docker push "${DOCKERHUB_REGISTRY}/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}:${COMMIT_REF}"
+    - docker logout
+
+# =============================================================================
 
 build-tagged:
-  stage: build-push
-  script:
-    - IMAGE_TAG=${CI_COMMIT_TAG}
-    - docker info
-    - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
-    - docker build --pull -t "${CI_REGISTRY}/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}:${IMAGE_TAG}" .
-    - docker push "${CI_REGISTRY}/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}:${IMAGE_TAG}"
-  only:
-    - /^v(\d+\.)?(\d+\.)?(\*|\d+)$/
+  stage: build
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v(\d+\.)?(\d+\.)?(\*|\d+)$/
+  variables:
+    COMMIT_REF: "${CI_COMMIT_TAG}"
+    COMMIT_HASH: "${CI_COMMIT_SHORT_SHA}"
   tags:
-    - shared
     - docker
+    - "${RUNNER_INFRASTRUCTURE}"
+  script:
+    - echo "COMMIT_REF = ${COMMIT_REF}"
+    - echo "COMMIT_HASH = ${CI_COMMIT_SHORT_SHA}"
+
+    - echo "${CI_REGISTRY_PASSWORD}" | docker login --password-stdin -u "${CI_REGISTRY_USER}" "${CI_REGISTRY}"
+    - docker build --pull --tag "${CI_REGISTRY_IMAGE}:${COMMIT_REF}" --build-arg COMMIT_REF=${COMMIT_REF} --build-arg COMMIT_HASH=${COMMIT_HASH} .
+    - docker push "${CI_REGISTRY_IMAGE}:${COMMIT_REF}"
+    - docker logout
+
+    - echo "${DOCKERHUB_PASSWORD}" | docker login --password-stdin -u "${DOCKERHUB_USERNAME}" "${DOCKERHUB_REGISTRY}"
+    - docker build --pull --tag "${DOCKERHUB_REGISTRY}/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}:${COMMIT_REF}" --build-arg COMMIT_REF=${COMMIT_REF} --build-arg COMMIT_HASH=${COMMIT_HASH} .
+    - docker push "${DOCKERHUB_REGISTRY}/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}:${COMMIT_REF}"
+    - docker logout
