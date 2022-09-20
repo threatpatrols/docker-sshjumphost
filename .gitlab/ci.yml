@@ -31,7 +31,7 @@ build-dev:
   before_script:
     - export RUNNER_TIMESTAMP="$(date -u +%Y%m%d%H%M%Sz)"
   script:
-    - export BUILD_TAG="${CI_REGISTRY_IMAGE//docker-}/${CI_COMMIT_BRANCH}:${RUNNER_TIMESTAMP}-${COMMIT_REF}"
+    - export BUILD_TAG="${CI_REGISTRY_IMAGE}/${CI_COMMIT_BRANCH}:${RUNNER_TIMESTAMP}-${COMMIT_REF}"
     - echo "BUILD_TAG = ${BUILD_TAG}"
     - echo "${CI_REGISTRY_PASSWORD}" | docker login --password-stdin -u "${CI_REGISTRY_USER}" "${CI_REGISTRY}"
     - docker build --pull --tag "${BUILD_TAG}" --build-arg COMMIT_REF=${COMMIT_REF} --build-arg COMMIT_HASH=${COMMIT_HASH} .
@@ -51,7 +51,7 @@ build-latest:
     - docker
     - "${RUNNER_INFRASTRUCTURE}"
   script:
-    - export BUILD_TAG="${CI_REGISTRY_IMAGE//docker-}:${COMMIT_REF}"
+    - export BUILD_TAG="${CI_REGISTRY_IMAGE}:${COMMIT_REF}"
     - echo "BUILD_TAG = ${BUILD_TAG}"
     - echo "${CI_REGISTRY_PASSWORD}" | docker login --password-stdin -u "${CI_REGISTRY_USER}" "${CI_REGISTRY}"
     - docker build --pull --tag "${BUILD_TAG}" --build-arg COMMIT_REF=${COMMIT_REF} --build-arg COMMIT_HASH=${COMMIT_HASH} .
@@ -78,7 +78,7 @@ build-tagged:
     - docker
     - "${RUNNER_INFRASTRUCTURE}"
   script:
-    - export BUILD_TAG="${CI_REGISTRY_IMAGE//docker-}:${COMMIT_REF}"
+    - export BUILD_TAG="${CI_REGISTRY_IMAGE}:${COMMIT_REF}"
     - echo "BUILD_TAG = ${BUILD_TAG}"
     - echo "${CI_REGISTRY_PASSWORD}" | docker login --password-stdin -u "${CI_REGISTRY_USER}" "${CI_REGISTRY}"
     - docker build --pull --tag "${BUILD_TAG}" --build-arg COMMIT_REF=${COMMIT_REF} --build-arg COMMIT_HASH=${COMMIT_HASH} .
