@@ -3,7 +3,7 @@ version: "3"
 services:
 
   externalhost01:
-    image: docker.io/threatpatrols/docker-sshjumphost
+    image: docker.io/threatpatrols/sshjumphost:latest
     restart: unless-stopped
     expose:
       - 22/tcp
@@ -16,7 +16,7 @@ services:
       SSH_AUTHORIZED_KEYS: "sk-ecdsa-sha2-nistp256@openssh.com xxxxxxxxxxxxxxxxxxxxxxxxx"
 
   internalhost01:
-    image: docker.io/threatpatrols/docker-sshjumphost
+    image: docker.io/threatpatrols/sshjumphost:latest
     restart: unless-stopped
     expose:
       - 22/tcp

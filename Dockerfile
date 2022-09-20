@@ -15,6 +15,7 @@ COPY sshjumphost /usr/sbin/sshjumphost
 RUN set -x \
     && apk add --no-cache openssh-server \
     && apk add --no-cache openssh-client \
+    && apk add --no-cache iputils \
     && echo "# " > /etc/motd \
     && echo "# sshjumphost" >> /etc/motd \
     && echo "# version: ${COMMIT_REF} (${COMMIT_HASH})" >> /etc/motd \
