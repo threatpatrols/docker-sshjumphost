@@ -25,10 +25,7 @@ dev-host01-1  | sshd_command: /usr/sbin/sshd -D -e -4 -o PasswordAuthentication=
 dev-host01-1  | Server listening on 0.0.0.0 port 22.
 ```
 
-This project originally forked from [binlab/docker-bastion](https://github.com/binlab/docker-bastion) and
-significantly modified - thanks Mark for the base to work from.
-
-## env variables
+## ENV variables
 
 ### `SSH_USERNAME [<username>]`
 * Default: `sshjumphost`
@@ -185,3 +182,17 @@ Warning: Permanently added 'internalhost01' (ED25519) to the list of known hosts
 #
 0bf40e5b195f:~$
 ```
+
+## Dockerhub
+* https://hub.docker.com/r/threatpatrols/docker-sshjumphost
+
+## Source
+* https://github.com/threatpatrols/docker-sshjumphost
+
+## Copyright
+* Copyright (c) 2022 Nicholas de Jong <ndejong@threatpatrols.com>
+* Copyright (c) 2018 Mark <mark.binlab@gmail.com>
+
+## Thanks
+This project originally forked from [binlab/docker-bastion](https://github.com/binlab/docker-bastion) and
+significantly modified - thanks Mark for the base to work from.

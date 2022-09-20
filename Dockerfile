@@ -18,7 +18,7 @@ RUN set -x \
     && echo "# " > /etc/motd \
     && echo "# sshjumphost" >> /etc/motd \
     && echo "# version: ${COMMIT_REF} (${COMMIT_HASH})" >> /etc/motd \
-    && echo "# documentation: https://hub.docker.com/r/threatpatrols/docker-sshjumphost" >> /etc/motd \
+    && echo "# documentation: https://github.com/threatpatrols/docker-sshjumphost" >> /etc/motd \
     && echo "# " >> /etc/motd \
     && echo "# NB: set the SSH_SHELL environment variable to enable a login-shell at the sshjumphost." >> /etc/motd \
     && echo "# " >> /etc/motd \
