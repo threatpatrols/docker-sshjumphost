@@ -28,13 +28,16 @@ build-dev:
   tags:
     - docker
     - "${RUNNER_INFRASTRUCTURE}"
+  before_script:
+    - export RUNNER_TIMESTAMP="$(date -u +%Y%m%d%H%M%Sz)"
   script:
     - echo "COMMIT_REF = ${COMMIT_REF}"
     - echo "COMMIT_HASH = ${CI_COMMIT_SHORT_SHA}"
+    - echo "RUNNER_TIMESTAMP = ${RUNNER_TIMESTAMP}"
 
     - echo "${CI_REGISTRY_PASSWORD}" | docker login --password-stdin -u "${CI_REGISTRY_USER}" "${CI_REGISTRY}"
-    - docker build --pull --tag "${CI_REGISTRY_IMAGE}/${CI_COMMIT_BRANCH}:${COMMIT_REF}" --build-arg COMMIT_REF=${COMMIT_REF} --build-arg COMMIT_HASH=${COMMIT_HASH} .
-    - docker push "${CI_REGISTRY_IMAGE}/${CI_COMMIT_BRANCH}:${COMMIT_REF}"
+    - docker build --pull --tag "${CI_REGISTRY_IMAGE}/${CI_COMMIT_BRANCH}:${RUNNER_TIMESTAMP}-${COMMIT_REF}" --build-arg COMMIT_REF=${COMMIT_REF} --build-arg COMMIT_HASH=${COMMIT_HASH} .
+    - docker push "${CI_REGISTRY_IMAGE}/${CI_COMMIT_BRANCH}:${RUNNER_TIMESTAMP}-${COMMIT_REF}"
     - docker logout
 
 # =============================================================================
