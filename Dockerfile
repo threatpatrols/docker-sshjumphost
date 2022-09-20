@@ -26,7 +26,7 @@ RUN set -x \
     && mkdir -p ${DATA_PATH}/cakeys \
     && mkdir -p ${DATA_PATH}/hostkeys \
     && mkdir -p ${DATA_PATH}/userkeys \
-    && mkdir -p ${DATA_PATH}/home \
+    && mkdir -p ${DATA_PATH}/home
 
 EXPOSE 22/tcp
 
