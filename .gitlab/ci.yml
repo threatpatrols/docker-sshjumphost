@@ -19,55 +19,6 @@ stages:
 
 # =============================================================================
 
-container_scanning:
-  image: "registry.gitlab.com/security-products/container-scanning:5"  # https://gitlab.com/gitlab-org/security-products/analyzers/container-scanning
-  stage: test
-  rules:
-    - if: $CI_COMMIT_BRANCH == 'dev'
-  variables:
-    GIT_STRATEGY: none
-  allow_failure: false
-  artifacts:
-    reports:
-      container_scanning: gl-container-scanning-report.json
-      dependency_scanning: gl-dependency-scanning-report.json
-    paths: [gl-container-scanning-report.json, gl-dependency-scanning-report.json]
-  dependencies: []
-  script: |
-    gtcs scan
-    ## set -x
-    for report_filename in "gl-container-scanning-report.json" "gl-dependency-scanning-report.json"; do
-      if [ -f "${report_filename}" ]; then
-        export vulnerability_flag="$(cat ${report_filename} | tr -d '[:space:]' | tr ':[{' '___' | grep '"vulnerabilities"___' | wc -l)"
-        if [ ${vulnerability_flag} -gt 0 ]; then
-          echo "!!!"
-          echo "!!! ERROR: vulnerabilities reported in ${report_filename}"
-          echo "!!!"
-          echo -n "Vulnerabilities reported in runner artifact \`${report_filename}\`" > "message.txt"
-          exit 1
-        fi
-      else
-        echo "!!!"
-        echo "!!! WARNING: scanning report not found ${report_filename}"
-        echo "!!!"
-      fi
-    done
-
-  ## NB: https://gitlab.com/gitlab-org/gitlab/-/issues/21008
-  after_script: |
-    if [ -f "message.txt" ] && [ -n "${CS_REPORT_ALERT_URL}" ]; then
-      sudo apt-get update
-      sudo apt-get install -q -y curl
-      export alert_message=$(cat "message.txt")
-      curl -X POST \
-        --silent \
-        -H 'Content-type: application/json' \
-        --data '{"blocks":[{"type":"section","text":{"type":"mrkdwn","text":":skull: Container Scanning Pipeline *Vulnerability Reported*\n\n- Repo: https://gitlab.com/'"${CI_PROJECT_PATH}/-/tree/${CI_COMMIT_BRANCH}"'\n- Commit: '"${CI_COMMIT_SHORT_SHA}"'\n- Pipeline: '"${CI_PIPELINE_URL}"'\n- Message: '"${alert_message}"'\n"}}]}' \
-        "${CS_REPORT_ALERT_URL}"
-    fi
-
-# =============================================================================
-
 build_dev:
   stage: build
   rules:
@@ -115,3 +66,52 @@ build_tagged:
     - docker push "${BUILD2_NAME}:${BUILD_TAG}"
     - docker push "${BUILD2_NAME}:latest"
     - docker logout
+
+# =============================================================================
+
+container_scanning:
+  image: "registry.gitlab.com/security-products/container-scanning:5"  # https://gitlab.com/gitlab-org/security-products/analyzers/container-scanning
+  stage: test
+  rules:
+    - if: $CI_COMMIT_BRANCH == 'main'
+  variables:
+    GIT_STRATEGY: none
+  allow_failure: false
+  artifacts:
+    reports:
+      container_scanning: gl-container-scanning-report.json
+      dependency_scanning: gl-dependency-scanning-report.json
+    paths: [gl-container-scanning-report.json, gl-dependency-scanning-report.json]
+  dependencies: []
+  script: |
+    gtcs scan
+    ## set -x
+    for report_filename in "gl-container-scanning-report.json" "gl-dependency-scanning-report.json"; do
+      if [ -f "${report_filename}" ]; then
+        export vulnerability_flag="$(cat ${report_filename} | tr -d '[:space:]' | tr ':[{' '___' | grep '"vulnerabilities"___' | wc -l)"
+        if [ ${vulnerability_flag} -gt 0 ]; then
+          echo "!!!"
+          echo "!!! ERROR: vulnerabilities reported in ${report_filename}"
+          echo "!!!"
+          echo -n "Vulnerabilities reported in runner artifact \`${report_filename}\`" > "message.txt"
+          exit 1
+        fi
+      else
+        echo "!!!"
+        echo "!!! WARNING: scanning report not found ${report_filename}"
+        echo "!!!"
+      fi
+    done
+
+  ## NB: https://gitlab.com/gitlab-org/gitlab/-/issues/21008
+  after_script: |
+    if [ -f "message.txt" ] && [ -n "${CS_REPORT_ALERT_URL}" ]; then
+      sudo apt-get update
+      sudo apt-get install -q -y curl
+      export alert_message=$(cat "message.txt")
+      curl -X POST \
+        --silent \
+        -H 'Content-type: application/json' \
+        --data '{"blocks":[{"type":"section","text":{"type":"mrkdwn","text":":skull: Container Scanning Pipeline *Vulnerability Reported*\n\n- Repo: https://gitlab.com/'"${CI_PROJECT_PATH}/-/tree/${CI_COMMIT_BRANCH}"'\n- Commit: '"${CI_COMMIT_SHORT_SHA}"'\n- Pipeline: '"${CI_PIPELINE_URL}"'\n- Message: '"${alert_message}"'\n"}}]}' \
+        "${CS_REPORT_ALERT_URL}"
+    fi
