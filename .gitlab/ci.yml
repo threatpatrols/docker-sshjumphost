@@ -35,7 +35,6 @@ build_dev:
     - echo "${CI_REGISTRY_PASSWORD}" | docker login --password-stdin -u "${CI_REGISTRY_USER}" "${CI_REGISTRY}"
     - docker build --pull --tag "${BUILD1_NAME}:${BUILD_TAG}" --tag "${BUILD1_NAME}:${CI_COMMIT_SHA}" --tag "${BUILD1_NAME}:latest" --build-arg COMMIT_REF=${COMMIT_REF} --build-arg COMMIT_HASH=${COMMIT_HASH} .
     - docker push "${BUILD1_NAME}:${BUILD_TAG}"
-    - docker push "${BUILD1_NAME}:${CI_COMMIT_SHA}"
     - docker push "${BUILD1_NAME}:latest"
     - docker logout
 
@@ -72,10 +71,9 @@ build_tagged:
 container_scanning:
   image: "registry.gitlab.com/security-products/container-scanning:5"  # https://gitlab.com/gitlab-org/security-products/analyzers/container-scanning
   stage: test
-  rules:
-    - if: $CI_COMMIT_BRANCH == 'dev'
   variables:
     GIT_STRATEGY: none
+
   allow_failure: false
   artifacts:
     reports:
@@ -83,23 +81,39 @@ container_scanning:
       dependency_scanning: gl-dependency-scanning-report.json
     paths: [gl-container-scanning-report.json, gl-dependency-scanning-report.json]
   dependencies: []
+
+  before_script: |
+    if [ ${CI_COMMIT_BRANCH} = 'dev' ]; then
+      export CS_IMAGE="${CI_REGISTRY_IMAGE}/${CI_COMMIT_BRANCH}:latest"
+    elif [ ${CI_COMMIT_BRANCH} = 'main' ] && [ ${CI_PIPELINE_SOURCE} != 'schedule' ]; then
+      export CS_IMAGE=""
+    else
+      export CS_IMAGE="${CI_REGISTRY_IMAGE}:latest"
+    fi
+
   script: |
-    gtcs scan
-    ## set -x
+    if [ -z ${CS_IMAGE} ]; then
+      echo "###"
+      echo "### INFO: Skip scanning the main branch when not a scheduled task"
+      echo "###"
+      exit 0
+    else
+      gtcs scan
+    fi
     for report_filename in "gl-container-scanning-report.json" "gl-dependency-scanning-report.json"; do
       if [ -f "${report_filename}" ]; then
         export vulnerability_flag="$(cat ${report_filename} | tr -d '[:space:]' | tr ':[{' '___' | grep '"vulnerabilities"___' | wc -l)"
         if [ ${vulnerability_flag} -gt 0 ]; then
-          echo "!!!"
-          echo "!!! ERROR: vulnerabilities reported in ${report_filename}"
-          echo "!!!"
+          echo "###"
+          echo "### ERROR: vulnerabilities reported in ${report_filename}"
+          echo "###"
           echo -n "Vulnerabilities reported in runner artifact \`${report_filename}\`" > "message.txt"
           exit 1
         fi
       else
-        echo "!!!"
-        echo "!!! WARNING: scanning report not found ${report_filename}"
-        echo "!!!"
+        echo "###"
+        echo "### WARNING: scanning report not found ${report_filename}"
+        echo "###"
       fi
     done
 
