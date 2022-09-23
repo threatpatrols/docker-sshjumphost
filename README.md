@@ -4,10 +4,10 @@ An awesome sshjumphost (bastion host) for easily accessing container backend net
 The `sshjumphost` makes easy work of setting up containerized ssh-key based or 
 user-ca-key based authentication ssh jumphosts.
 
-By default, sshjumphost does not provide a login-shell since the intent is to __jump__ 
-from the sshjumphost to another.  All TCP port forwarding and `-J` style jumphost 
-functionality is possible without a shell.  You can still get a shell by setting 
-the `SSH_SHELL` environment variable.
+By default, sshjumphost does not provide any login-shell since the intent is 
+to __jump__ from the sshjumphost to another.  All TCP port forwarding and `-J` 
+style ssh jumphost functionality is possible without a shell.  You can still
+get a shell setting the `SSH_SHELL` environment variable.
 
 Example: establish a SOCKS proxy to your backend network
 ```commandline
