@@ -1,13 +1,116 @@
 # sshjumphost
-A fancy sshjumphost (bastion host) for accessing backend networks; makes easy work of
-setting up ssh-key based or user-ca-key based authentication.
+An awesome sshjumphost (bastion host) for easily accessing container backend networks.
 
-By default, sshjumphost does not provide any login-shell since the intent is 
-to __jump__ from the sshjumphost to another.  This can be overridden by setting 
-the `SSH_SHELL` environment variable if required.  All TCP port forwarding 
-and `-J` style jumphost functionality is still possible in this arrangement.
+The `sshjumphost` makes easy work of setting up containerized ssh-key based or 
+user-ca-key based authentication ssh jumphosts.
 
-The sshjumphost container provides good visibility to STDOUT making it easy to
+By default, sshjumphost does not provide a login-shell since the intent is to __jump__ 
+from the sshjumphost to another.  All TCP port forwarding and `-J` style jumphost 
+functionality is possible without a shell.  You can still get a shell by setting 
+the `SSH_SHELL` environment variable.
+
+Example: establish a SOCKS proxy to your backend network
+```commandline
+user@computer ~/$ ssh -D 1080 username@awesome.company.net
+#
+# sshjumphost
+# version: v2.1.1 (5c7597ea)
+# documentation: https://github.com/threatpatrols/docker-sshjumphost
+#
+# NB: set the SSH_SHELL environment variable to enable a login-shell at the sshjumphost.
+#
+```
+
+## Docker
+```commandline
+docker pull threatpatrols/sshjumphost
+```
+* https://hub.docker.com/r/threatpatrols/sshjumphost
+
+---
+
+## Docker-compose example
+
+```dockerfile
+version: "3"
+
+services:
+
+  externalhost01:
+    # Description :
+    #  - username adjusted to "awesome" rather than the default "sshjumphost"
+    #  - ssh key(s) supplied via environment variable in this example externalhost01
+    #  - mount /data/hostkeys to store the hostkeys so these remain persistent on restart
+    #  - this host is attached to the "awesome_network" that the "internalhost01" is also attached to below
+
+    image: threatpatrols/sshjumphost:latest
+    restart: unless-stopped
+    ports:
+      - 22222:22/tcp
+    volumes:
+      - "hostkeys_externalhost01:/data/hostkeys"
+    networks:
+      - awesome_network
+    environment:
+      SSH_USERNAME: "awesome"  # NB: default = sshjumphost
+      SSH_AUTHORIZED_KEYS: "sk-ecdsa-sha2-nistp256@openssh.com xxxxxxxxxxxxxxxxxxxxxxxxx"  # NB: use your ssh key(s) here
+
+  internalhost01:
+    # Description :
+    #  - username here is also adjusted to "awesome" rather than the default "sshjumphost"
+    #  - ssh key(s) supplied via volume mount in this example internalhost01, alternative would be to simply
+    #    mount "/data/userkeys/authorized_keys" and not set SSH_AUTHORIZED_KEYS
+    #  - mount /data/hostkeys to store the hostkeys so these remain persistent on restart
+    #  - this host is also attached to the "awesome_network" which makes it reachable from the above externalhost01 host
+    #  - this host has SSH_SHELL defined which hence provides the user with a shell for the sake of the example
+
+    image: threatpatrols/sshjumphost:latest
+    restart: unless-stopped
+    volumes:
+      - "hostkeys_internalhost01:/data/hostkeys"
+      - "/home/awesome/.ssh/authorized_keys:/data/userkeys/awesome_authorized_keys:ro"
+    networks:
+      - awesome_network
+    environment:
+      SSH_USERNAME: "awesome"
+      SSH_SHELL: "/bin/ash"  # NB: host is alpine, /bin/ash is the available shell
+      SSH_AUTHORIZED_KEYS: "/data/userkeys/awesome_authorized_keys"  # NB: name of mount above
+
+networks:
+  awesome_network:
+
+volumes:
+  hostkeys_externalhost01:
+  hostkeys_internalhost01:
+
+```
+
+Starting this docker-compose creates 2x docker-containers, where `externalhost01`
+is reachable via localhost on tcp-22222 and `internalhost01` that is only reachable
+via connectivity to the `awesome_network`
+
+It is now possible to reach `internalhost01` by using the `-J` switch to jump 
+through `externalhost01` located at 127.0.0.1:22222
+
+Note in the example provided the `SSH_SHELL` has been set on the `internalhost01` 
+which provides the shell prompt as shown below.
+```commandline
+user@computer ~/$ ssh -J 127.0.0.1:22222 internalhost01
+The authenticity of host 'internalhost01 (<no hostip for proxy command>)' can't be established.
+ED25519 key fingerprint is SHA256:eoCSPJQMzNcmTZcaE0ge3EL4XbmTW8Y0bGqTZZ0Byk8.
+This key is not known by any other names
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+Warning: Permanently added 'internalhost01' (ED25519) to the list of known hosts.
+#
+# sshjumphost: refer to documentation
+# https://hub.docker.com/r/threatpatrols/sshjumphost
+#
+# NB: set the SSH_SHELL environment variable to enable a login-shell at the sshjumphost.
+#
+0bf40e5b195f:~$
+```
+
+The sshjumphost container also provides good visibility to STDOUT making it easy to
 monitor via your container-environment logging etc.
 ```
 dev-host01-1  | ssh-keygen: generating new host keys: RSA DSA ECDSA ED25519
@@ -25,7 +128,9 @@ dev-host01-1  | sshd_command: /usr/sbin/sshd -D -e -4 -o PasswordAuthentication=
 dev-host01-1  | Server listening on 0.0.0.0 port 22.
 ```
 
-## ENV variables
+---
+
+## Configuration ENV variables
 
 ### `SSH_USERNAME [<username>]`
 * Default: `sshjumphost`
@@ -120,96 +225,12 @@ Gives the verbosity level that is used when logging messages from sshd(8).
 
 ---
 
-## Docker-compose example
-
-```yaml
-version: "3"
-
-services:
-
-  externalhost01:
-    # Description :
-    #  - username adjusted to "awesome" rather than the default "sshjumphost"
-    #  - ssh key(s) supplied via environment variable in this example externalhost01
-    #  - mount /data/hostkeys to store the hostkeys so these remain persistent on restart
-    #  - this host is attached to the "awesome_network" that the "internalhost01" is also attached to below
-
-    image: threatpatrols/sshjumphost:latest
-    restart: unless-stopped
-    ports:
-      - 22222:22/tcp
-    volumes:
-      - "hostkeys_externalhost01:/data/hostkeys"
-    networks:
-      - awesome_network
-    environment:
-      SSH_USERNAME: "awesome"  # NB: default = sshjumphost
-      SSH_AUTHORIZED_KEYS: "sk-ecdsa-sha2-nistp256@openssh.com xxxxxxxxxxxxxxxxxxxxxxxxx"  # NB: use your ssh key(s) here
-
-  internalhost01:
-    # Description :
-    #  - username here is also adjusted to "awesome" rather than the default "sshjumphost"
-    #  - ssh key(s) supplied via volume mount in this example internalhost01, alternative would be to simply
-    #    mount "/data/userkeys/authorized_keys" and not set SSH_AUTHORIZED_KEYS
-    #  - mount /data/hostkeys to store the hostkeys so these remain persistent on restart
-    #  - this host is also attached to the "awesome_network" which makes it reachable from the above externalhost01 host
-    #  - this host has SSH_SHELL defined which hence provides the user with a shell for the sake of the example
-
-    image: threatpatrols/sshjumphost:latest
-    restart: unless-stopped
-    volumes:
-      - "hostkeys_internalhost01:/data/hostkeys"
-      - "/home/awesome/.ssh/authorized_keys:/data/userkeys/awesome_authorized_keys:ro"
-    networks:
-      - awesome_network
-    environment:
-      SSH_USERNAME: "awesome"
-      SSH_SHELL: "/bin/ash"  # NB: host is alpine, /bin/ash is the available shell
-      SSH_AUTHORIZED_KEYS: "/data/userkeys/awesome_authorized_keys"  # NB: name of mount above
-
-networks:
-  awesome_network:
-
-volumes:
-  hostkeys_externalhost01:
-  hostkeys_internalhost01:
-
-```
-
-Starting this docker-compose creates 2x docker-containers, where `externalhost01`
-is reachable via localhost on tcp-22222 and `internalhost01` that is only reachable
-via connectivity to the `awesome_network`
-
-It is now possible to reach `internalhost01` by using the `-J` switch to jump 
-through `externalhost01` located at 127.0.0.1:22222 - note in the example provided
-the `SSH_SHELL` has been set on the `internalhost01` which provides the shell prompt
-as shown below.
-```commandline
-user@computer ~/$ ssh -J 127.0.0.1:22222 internalhost01
-The authenticity of host 'internalhost01 (<no hostip for proxy command>)' can't be established.
-ED25519 key fingerprint is SHA256:eoCSPJQMzNcmTZcaE0ge3EL4XbmTW8Y0bGqTZZ0Byk8.
-This key is not known by any other names
-Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
-Warning: Permanently added 'internalhost01' (ED25519) to the list of known hosts.
-#
-# sshjumphost: refer to documentation
-# https://hub.docker.com/r/threatpatrols/sshjumphost
-#
-# NB: set the SSH_SHELL environment variable to enable a login-shell at the sshjumphost.
-#
-0bf40e5b195f:~$
-```
-
-## Dockerhub
-* https://hub.docker.com/r/threatpatrols/sshjumphost
-
 ## Source
 * https://github.com/threatpatrols/docker-sshjumphost
 
 ## Copyright
 * Copyright (c) 2022 Nicholas de Jong <ndejong@threatpatrols.com>
-* Copyright (c) 2018 Mark <mark.binlab@gmail.com>
 
 ## Thanks
 This project originally forked from [binlab/docker-bastion](https://github.com/binlab/docker-bastion) and
-significantly modified - thanks Mark for the base to work from.
+mostly re-written top to bottom - thanks Mark for the initial base to work from.
