@@ -3,31 +3,48 @@ version: "3"
 services:
 
   externalhost01:
-    image: docker.io/threatpatrols/sshjumphost:latest
+    # Description :
+    #  - username adjusted to "awesome" rather than the default "sshjumphost"
+    #  - ssh key(s) supplied via environment variable in this example externalhost01
+    #  - mount /data/hostkeys to store the hostkeys so these remain persistent on restart
+    #  - this host is attached to the "awesome_network" that the "internalhost01" is also attached to below
+
+    image: threatpatrols/sshjumphost:latest
     restart: unless-stopped
-    expose:
-      - 22/tcp
     ports:
       - 22222:22/tcp
+    volumes:
+      - "hostkeys_externalhost01:/data/hostkeys"
     networks:
       - awesome_network
     environment:
-      SSH_USERNAME: "awesome"
-      SSH_AUTHORIZED_KEYS: "sk-ecdsa-sha2-nistp256@openssh.com xxxxxxxxxxxxxxxxxxxxxxxxx"
+      SSH_USERNAME: "awesome"  # NB: default = sshjumphost
+      SSH_AUTHORIZED_KEYS: "sk-ecdsa-sha2-nistp256@openssh.com xxxxxxxxxxxxxxxxxxxxxxxxx"  # NB: use your ssh key(s) here
 
   internalhost01:
-    image: docker.io/threatpatrols/sshjumphost:latest
+    # Description :
+    #  - username here is also adjusted to "awesome" rather than the default "sshjumphost"
+    #  - ssh key(s) supplied via volume mount in this example internalhost01, alternative would be to simply
+    #    mount "/data/userkeys/authorized_keys" and not set SSH_AUTHORIZED_KEYS
+    #  - mount /data/hostkeys to store the hostkeys so these remain persistent on restart
+    #  - this host is also attached to the "awesome_network" which makes it reachable from the above externalhost01 host
+    #  - this host has SSH_SHELL defined which hence provides the user with a shell for the sake of the example
+
+    image: threatpatrols/sshjumphost:latest
     restart: unless-stopped
-    expose:
-      - 22/tcp
     volumes:
+      - "hostkeys_internalhost01:/data/hostkeys"
       - "/home/awesome/.ssh/authorized_keys:/data/userkeys/awesome_authorized_keys:ro"
     networks:
       - awesome_network
     environment:
       SSH_USERNAME: "awesome"
-      SSH_SHELL: "/bin/ash"
-      SSH_AUTHORIZED_KEYS: "/data/userkeys/awesome_authorized_keys"
+      SSH_SHELL: "/bin/ash"  # NB: host is alpine, /bin/ash is the available shell
+      SSH_AUTHORIZED_KEYS: "/data/userkeys/awesome_authorized_keys"  # NB: name of mount above
 
 networks:
   awesome_network:
+
+volumes:
+  hostkeys_externalhost01:
+  hostkeys_internalhost01:
