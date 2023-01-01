@@ -1,5 +1,5 @@
 
-image: docker:20.10.16
+image: docker:20.10.22
 
 include:
 
@@ -8,7 +8,7 @@ variables:
   CS_REPORT_ALERT_URL: "${SLACK_BUILDOPS_WEBHOOK_URL}"  # Slack Bot Incoming Webhook URL
 
 services:
-  - name: docker:20.10.16-dind
+  - name: docker:20.10.22-dind
     alias: docker
 
 stages:
@@ -43,7 +43,7 @@ build_dev:
 build_tagged:
   stage: build
   rules:
-    - if: $CI_COMMIT_TAG =~ /^v(\d+\.)?(\d+\.)?(\*|\d+)$/
+    - if: $CI_COMMIT_TAG =~ /^(\d+\.)?(\d+\.)?(\*|\d+)(\+.*?)?$/
   tags:
     - docker
     - "${RUNNER_INFRASTRUCTURE}"
