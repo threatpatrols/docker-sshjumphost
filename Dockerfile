@@ -15,14 +15,18 @@ COPY sshjumphost /usr/sbin/sshjumphost
 RUN set -x \
     && apk add --no-cache openssh-server \
     && apk add --no-cache openssh-client \
-    && apk add --no-cache iputils \
+    && apk add --no-cache iputils
+
+RUN set -x \
     && echo "# " > /etc/motd \
     && echo "# sshjumphost" >> /etc/motd \
     && echo "# version: ${COMMIT_REF} (${COMMIT_HASH})" >> /etc/motd \
     && echo "# documentation: https://github.com/threatpatrols/docker-sshjumphost" >> /etc/motd \
     && echo "# " >> /etc/motd \
     && echo "# NB: set the SSH_SHELL environment variable to enable a login-shell at the sshjumphost." >> /etc/motd \
-    && echo "# " >> /etc/motd \
+    && echo "# " >> /etc/motd
+
+RUN set -x \
     && chmod +x /usr/sbin/sshjumphost \
     && mkdir -p ${DATA_PATH}/cakeys \
     && mkdir -p ${DATA_PATH}/hostkeys \

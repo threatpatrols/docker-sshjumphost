@@ -1,20 +1,21 @@
 
 image: docker:20.10.22
 
-include:
-
 variables:
   RUNNER_INFRASTRUCTURE: "shared"
-  CS_REPORT_ALERT_URL: "${SLACK_BUILDOPS_WEBHOOK_URL}"  # Slack Bot Incoming Webhook URL
 
 services:
   - name: docker:20.10.22-dind
     alias: docker
 
+sast:
+  stage: analysis
+
+include:
+  - template: Security/SAST.gitlab-ci.yml
+
 stages:
   - build
-  - test
-  - deploy
   - analysis
 
 # =============================================================================
@@ -42,17 +43,21 @@ build_dev:
 
 build_tagged:
   stage: build
+
   rules:
-    - if: $CI_COMMIT_TAG =~ /^(\d+\.)?(\d+\.)?(\*|\d+)(\+.*?)?$/
+    - if: $CI_COMMIT_TAG =~ /^v?(\d+\.)?(\d+\.)?(\*|\d+)(\+.*?)?$/
+
   tags:
     - docker
     - "${RUNNER_INFRASTRUCTURE}"
+
   before_script:
     - export BUILD_TAG="${CI_COMMIT_TAG}"
     - export COMMIT_REF="${CI_COMMIT_TAG}"
     - export COMMIT_HASH="${CI_COMMIT_SHORT_SHA}"
     - export BUILD1_NAME="${CI_REGISTRY_IMAGE}"
-    - export BUILD2_NAME="${DOCKERHUB_REGISTRY}/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME//docker-}"
+    - export BUILD2_NAME="${DOCKERHUB_REGISTRY}/${DOCKERHUB_USERNAME}/${CI_PROJECT_NAME//docker-}"
+
   script:
     - echo "${CI_REGISTRY_PASSWORD}" | docker login --password-stdin -u "${CI_REGISTRY_USER}" "${CI_REGISTRY}"
     - docker build --pull --tag "${BUILD1_NAME}:${BUILD_TAG}" --tag "${BUILD1_NAME}:latest" --build-arg COMMIT_REF=${COMMIT_REF} --build-arg COMMIT_HASH=${COMMIT_HASH} .
@@ -65,67 +70,3 @@ build_tagged:
     - docker push "${BUILD2_NAME}:${BUILD_TAG}"
     - docker push "${BUILD2_NAME}:latest"
     - docker logout
-
-# =============================================================================
-
-container_scanning:
-  image: "registry.gitlab.com/security-products/container-scanning:5"  # https://gitlab.com/gitlab-org/security-products/analyzers/container-scanning
-  stage: test
-  variables:
-    GIT_STRATEGY: none
-
-  allow_failure: false
-  artifacts:
-    reports:
-      container_scanning: gl-container-scanning-report.json
-      dependency_scanning: gl-dependency-scanning-report.json
-    paths: [gl-container-scanning-report.json, gl-dependency-scanning-report.json]
-  dependencies: []
-
-  before_script: |
-    if [ ${CI_COMMIT_BRANCH} = 'dev' ]; then
-      export CS_IMAGE="${CI_REGISTRY_IMAGE}/${CI_COMMIT_BRANCH}:latest"
-    elif [ ${CI_COMMIT_BRANCH} = 'main' ] && [ ${CI_PIPELINE_SOURCE} != 'schedule' ]; then
-      export CS_IMAGE=""
-    else
-      export CS_IMAGE="${CI_REGISTRY_IMAGE}:latest"
-    fi
-
-  script: |
-    if [ -z ${CS_IMAGE} ]; then
-      echo "###"
-      echo "### INFO: Skip scanning the main branch when not a scheduled task"
-      echo "###"
-      exit 0
-    else
-      gtcs scan
-    fi
-    for report_filename in "gl-container-scanning-report.json" "gl-dependency-scanning-report.json"; do
-      if [ -f "${report_filename}" ]; then
-        export vulnerability_flag="$(cat ${report_filename} | tr -d '[:space:]' | tr ':[{' '___' | grep '"vulnerabilities"___' | wc -l)"
-        if [ ${vulnerability_flag} -gt 0 ]; then
-          echo "###"
-          echo "### ERROR: vulnerabilities reported in ${report_filename}"
-          echo "###"
-          echo -n "Vulnerabilities reported in runner artifact \`${report_filename}\`" > "message.txt"
-          exit 1
-        fi
-      else
-        echo "###"
-        echo "### WARNING: scanning report not found ${report_filename}"
-        echo "###"
-      fi
-    done
-
-  ## NB: https://gitlab.com/gitlab-org/gitlab/-/issues/21008
-  after_script: |
-    if [ -f "message.txt" ] && [ -n "${CS_REPORT_ALERT_URL}" ]; then
-      sudo apt-get update
-      sudo apt-get install -q -y curl
-      export alert_message=$(cat "message.txt")
-      curl -X POST \
-        --silent \
-        -H 'Content-type: application/json' \
-        --data '{"blocks":[{"type":"section","text":{"type":"mrkdwn","text":":skull: Container Scanning Pipeline *Vulnerability Reported*\n\n- Repo: https://gitlab.com/'"${CI_PROJECT_PATH}/-/tree/${CI_COMMIT_BRANCH}"'\n- Commit: '"${CI_COMMIT_SHORT_SHA}"'\n- Pipeline: '"${CI_PIPELINE_URL}"'\n- Message: '"${alert_message}"'\n"}}]}' \
-        "${CS_REPORT_ALERT_URL}"
-    fi
