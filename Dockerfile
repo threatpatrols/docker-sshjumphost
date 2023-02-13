@@ -1,4 +1,6 @@
-FROM alpine:3.17.0@sha256:c0d488a800e4127c334ad20d61d7bc21b4097540327217dfab52262adc02380c
+
+# https://hub.docker.com/_/alpine/tags
+FROM alpine:3.17.2@sha256:e2e16842c9b54d985bf1ef9242a313f36b856181f188de21313820e177002501
 
 LABEL maintainer="Nicholas de Jong <ndejong@threatpatrols.com>"
 
