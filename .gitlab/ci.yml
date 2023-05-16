@@ -1,11 +1,11 @@
 
-image: docker:20.10.22
+image: docker:23.0
 
 variables:
   RUNNER_INFRASTRUCTURE: "shared"
 
 services:
-  - name: docker:20.10.22-dind
+  - name: docker:23.0-dind
     alias: docker
 
 sast:
