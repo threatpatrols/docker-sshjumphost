@@ -1,6 +1,6 @@
 
 # https://hub.docker.com/_/alpine/tags
-FROM alpine:3.18
+FROM alpine:3.18.2
 
 LABEL maintainer="Nicholas de Jong <ndejong@threatpatrols.com>"
 
