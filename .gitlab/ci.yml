@@ -1,11 +1,11 @@
 
-image: docker:23.0
+image: docker:latest
 
 variables:
   RUNNER_INFRASTRUCTURE: "gitlab-org-docker"
 
 services:
-  - name: docker:23.0-dind
+  - name: docker:dind
     alias: docker
 
 sast:
@@ -54,8 +54,8 @@ build_dev:
         --build-arg COMMIT_HASH=${COMMIT_HASH} .
 
       echo "${CI_REGISTRY_PASSWORD}" | docker login --password-stdin -u "${CI_REGISTRY_USER}" "${CI_REGISTRY}"
-      docker push "${BUILD2_NAME}:${BUILD_TAG}"
-      docker push "${BUILD2_NAME}:latest"
+      docker push "${BUILD1_NAME}:${BUILD_TAG}"
+      docker push "${BUILD1_NAME}:latest"
       docker logout
 
 # =============================================================================
@@ -95,8 +95,8 @@ build_tagged:
         --build-arg COMMIT_HASH=${COMMIT_HASH} .
 
       echo "${CI_REGISTRY_PASSWORD}" | docker login --password-stdin -u "${CI_REGISTRY_USER}" "${CI_REGISTRY}"
-      docker push "${BUILD2_NAME}:${BUILD_TAG}"
-      docker push "${BUILD2_NAME}:latest"
+      docker push "${BUILD1_NAME}:${BUILD_TAG}"
+      docker push "${BUILD1_NAME}:latest"
       docker logout
 
     - |
