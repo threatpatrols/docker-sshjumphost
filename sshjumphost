@@ -169,6 +169,7 @@ echo "$(cat ${DATA_PATH}/hostkeys/hostkey.fingerprints)"
 # create the command_line used to invoke the sshd
 sshd_command="/usr/sbin/sshd -D -e -4 \
   -o PasswordAuthentication=no \
+  -o KbdInteractiveAuthentication=no \
   -o PermitEmptyPasswords=no \
   -o PermitRootLogin=no \
   -o AuthorizedKeysFile=${USER_PATH}/.ssh/authorized_keys \
