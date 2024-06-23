@@ -1,6 +1,6 @@
 
 # https://hub.docker.com/_/alpine/tags
-FROM alpine:3.20.0
+FROM alpine:3
 
 # Hello
 LABEL maintainer="Nicholas de Jong <ndejong@threatpatrols.com>"
