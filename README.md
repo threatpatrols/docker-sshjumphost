@@ -14,7 +14,7 @@ Example: establish a SOCKS proxy inside your backend network
 user@computer ~/$ ssh -D 1080 username@awesome.company.net
 #
 # sshjumphost
-# version: v2.1.1 (5c7597ea)
+# version: 3.0.0 (a0dbd7a7)
 # documentation: https://github.com/threatpatrols/docker-sshjumphost
 #
 # NB: set the SSH_SHELL environment variable to enable a login-shell at the sshjumphost.
@@ -236,7 +236,7 @@ Gives the verbosity level that is used when logging messages from sshd(8).
 * https://github.com/threatpatrols/docker-sshjumphost
 
 ## Copyright
-* Copyright (c) 2022 Nicholas de Jong <ndejong@threatpatrols.com>
+* Copyright (c) 2022-2024 Nicholas de Jong <ndejong@threatpatrols.com>
 
 ## Thanks
 This project originally forked from [binlab/docker-bastion](https://github.com/binlab/docker-bastion) and
