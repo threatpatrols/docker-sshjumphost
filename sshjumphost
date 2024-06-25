@@ -4,6 +4,8 @@ DATA_PATH="/data"
 USER_PATH="${DATA_PATH}/home"
 USER_SHELL="/bin/dd"
 USER_USERNAME="sshjumphost"
+USER_UID=4095
+USER_GID=4095
 USER_AUTHORIZED_KEYS_FILE="${DATA_PATH}/userkeys/authorized_keys"
 SERVER_TRUSTED_USER_CA_KEYS_FILE="${DATA_PATH}/cakeys/trusted_keys"
 SERVER_AUTHORIZED_PRINCIPALS_FILE="${DATA_PATH}/cakeys/authorized_principals"
@@ -26,7 +28,7 @@ if [ -n "${SSH_SHELL}" ]; then
   if [ -f "${SSH_SHELL}" ]; then
     USER_SHELL="${SSH_SHELL}"
   else
-    echo "WARNING: SSH_SHELL supplied but ${SSH_SHELL} is not available; did you try '/bin/ash'?"
+    echo "WARNING: SSH_SHELL supplied but ${SSH_SHELL} is not available!"
   fi
 fi
 
@@ -107,9 +109,9 @@ fi
 # =============================================================================
 
 # create user if not already exists
-if [ "$(id -u ${USER_USERNAME} 2>&1 | grep -v unknown | wc -l)" -eq 0 ]; then
-  addgroup -S -g 4095 "${USER_USERNAME}"
-  adduser -D -h "${USER_PATH}" -s "${USER_SHELL}" -g "sshjumphost user" -u 4095 -G "${USER_USERNAME}" "${USER_USERNAME}"
+if [ "$(id -u ${USER_USERNAME} 1>dev/null 2>/dev/null; echo $?)" -gt 0 ]; then
+  addgroup --quiet --gid "${USER_GID}" "${USER_USERNAME}"
+  adduser --quiet --gecos "" --disabled-password --home "${USER_PATH}" --shell "${USER_SHELL}" --ingroup "${USER_USERNAME}" --uid "${USER_UID}" "${USER_USERNAME}"
   sed -i "s/${USER_USERNAME}:!/${USER_USERNAME}:*/g" /etc/shadow
 fi
 

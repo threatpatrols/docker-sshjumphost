@@ -1,6 +1,6 @@
 
-# https://hub.docker.com/_/alpine/tags
-FROM alpine:3.20.0
+# https://hub.docker.com/_/debian/tags
+FROM debian:stable-slim
 
 # Hello
 LABEL maintainer="Nicholas de Jong <ndejong@threatpatrols.com>"
@@ -16,26 +16,37 @@ ENV DATA_PATH="/data"
 
 COPY sshjumphost /usr/sbin/sshjumphost
 
-RUN set -x \
-    && apk add --no-cache openssh-server \
-    && apk add --no-cache openssh-client \
-    && apk add --no-cache iputils
+RUN set -x && \
+    apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -y openssh-server openssh-client iputils-ping iproute2 && \
+    apt-get install -y ash && \
+    \
+    systemctl disable ssh && \
+    mv /etc/ssh/ssh*_config /tmp/ && \
+    rm -Rf /etc/ssh/* && \
+    mv /tmp/ssh*_config /etc/ssh/ && \
+    mkdir /run/sshd && \
+    chown root:root /run/sshd && \
+    \
+    apt-get clean && \
+    apt-get autoremove -y && \
+    rm -rf /var/lib/apt/lists/*
 
-RUN set -x \
-    && echo "# " > /etc/motd \
-    && echo "# sshjumphost" >> /etc/motd \
-    && echo "# version: ${COMMIT_REF} (${COMMIT_HASH})" >> /etc/motd \
-    && echo "# documentation: https://github.com/threatpatrols/docker-sshjumphost" >> /etc/motd \
-    && echo "# " >> /etc/motd \
-    && echo "# NB: set the SSH_SHELL environment variable to enable a login-shell at the sshjumphost." >> /etc/motd \
-    && echo "# " >> /etc/motd
+RUN set -x && \
+    echo "# " > /etc/motd && \
+    echo "# sshjumphost" >> /etc/motd && \
+    echo "# version: ${COMMIT_REF} (${COMMIT_HASH})" >> /etc/motd && \
+    echo "# documentation: https://github.com/threatpatrols/docker-sshjumphost" >> /etc/motd && \
+    echo "# " >> /etc/motd && \
+    echo "# NB: set the SSH_SHELL environment variable to enable a login-shell at the sshjumphost." >> /etc/motd && \
+    echo "# " >> /etc/motd
 
-RUN set -x \
-    && chmod +x /usr/sbin/sshjumphost \
-    && mkdir -p ${DATA_PATH}/cakeys \
-    && mkdir -p ${DATA_PATH}/hostkeys \
-    && mkdir -p ${DATA_PATH}/userkeys \
-    && mkdir -p ${DATA_PATH}/home
+RUN set -x && \
+    chmod +x /usr/sbin/sshjumphost && \
+    mkdir -p ${DATA_PATH}/cakeys && \
+    mkdir -p ${DATA_PATH}/hostkeys && \
+    mkdir -p ${DATA_PATH}/userkeys
 
 EXPOSE 22/tcp
 

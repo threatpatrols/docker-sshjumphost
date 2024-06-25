@@ -1,5 +1,5 @@
 # sshjumphost
-An awesome sshjumphost (bastion host) for easily accessing container backend networks.
+An awesome sshjumphost (bastion host) for easily accessing container backend networks and other ssh gateway games.
 
 The `sshjumphost` makes easy work of setting up containerized ssh-key based or 
 user-ca-key based authentication ssh jumphosts.
@@ -9,7 +9,7 @@ to __jump__ from the sshjumphost to another.  All TCP port forwarding and `-J`
 style ssh jumphost functionality is possible without a shell.  You can still
 get a shell setting the `SSH_SHELL` environment variable.
 
-Example: establish a SOCKS proxy to your backend network
+Example: establish a SOCKS proxy inside your backend network
 ```commandline
 user@computer ~/$ ssh -D 1080 username@awesome.company.net
 #
@@ -32,8 +32,6 @@ docker pull threatpatrols/sshjumphost
 ## Docker-compose example
 
 ```dockerfile
-version: "3"
-
 services:
 
   externalhost01:
@@ -73,7 +71,7 @@ services:
       - awesome_network
     environment:
       SSH_USERNAME: "awesome"
-      SSH_SHELL: "/bin/ash"  # NB: host is alpine, /bin/ash is the available shell
+      SSH_SHELL: "/bin/bash"
       SSH_AUTHORIZED_KEYS: "/data/userkeys/awesome_authorized_keys"  # NB: name of mount above
 
 networks:
@@ -224,6 +222,9 @@ Gives the verbosity level that is used when logging messages from sshd(8).
 * https://man.openbsd.org/sshd_config#LogLevel
 
 ---
+
+## Noteable Changes
+* v2.x to v3.x - moved from Alpine based images to Debian images 
 
 ## Source
 * https://github.com/threatpatrols/docker-sshjumphost
