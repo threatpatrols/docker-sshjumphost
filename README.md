@@ -203,6 +203,12 @@ Specifies whether TCP forwarding is permitted.
 Specifies whether ssh-agent forwarding is permitted.
 * https://man.openbsd.org/sshd_config#AllowAgentForwarding
 
+### `SSHD_PERMIT_ROOT_LOGIN [yes | no]`
+* Default: `no`
+
+Specifies whether a root user login is permitted.
+* https://man.openbsd.org/sshd_config#PermitRootLogin
+
 ### `SSHD_LISTEN_ADDRESS [<ipv4-address>]`
 * Default: `0.0.0.0`
 

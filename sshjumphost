@@ -85,6 +85,13 @@ else
     CONFIG_ALLOW_AGENT_FORWARDING="-o AllowAgentForwarding=yes"
 fi
 
+# https://man.openbsd.org/sshd_config#PermitRootLogin
+if [ "$SSHD_PERMIT_ROOT_LOGIN" = "yes" ]; then
+    CONFIG_PERMIT_ROOT_LOGIN="-o PermitRootLogin=yes"
+else
+    CONFIG_PERMIT_ROOT_LOGIN="-o PermitRootLogin=no"
+fi
+
 # https://man.openbsd.org/sshd_config#ListenAddress
 if [ -n "$SSHD_LISTEN_ADDRESS" ]; then
     CONFIG_LISTEN_ADDRESS="-o ListenAddress=$(echo "${SSHD_LISTEN_ADDRESS}" | tr -cd '.:0-9' | head -c32)"
@@ -173,7 +180,6 @@ sshd_command="/usr/sbin/sshd -D -e -4 \
   -o PasswordAuthentication=no \
   -o KbdInteractiveAuthentication=no \
   -o PermitEmptyPasswords=no \
-  -o PermitRootLogin=no \
   -o AuthorizedKeysFile=${USER_PATH}/.ssh/authorized_keys \
   ${CONFIG_HOSTKEYS} \
   ${CONFIG_PUBKEY_AUTHENTICATION} \
@@ -184,6 +190,7 @@ sshd_command="/usr/sbin/sshd -D -e -4 \
   ${CONFIG_X11_FORWARDING} \
   ${CONFIG_ALLOW_TCP_FORWARDING} \
   ${CONFIG_ALLOW_AGENT_FORWARDING} \
+  ${CONFIG_PERMIT_ROOT_LOGIN} \
   ${CONFIG_LISTEN_ADDRESS} \
   ${CONFIG_LISTEN_PORT} \
   ${CONFIG_LOGLEVEL}
