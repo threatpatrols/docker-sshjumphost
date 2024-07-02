@@ -170,8 +170,13 @@ done
 echo "hostname: $(hostname)"
 echo "ip addr: $(ip addr | grep 'inet ' | grep -v ' lo$' | xargs)"
 echo "username: ${USER_USERNAME}"
+printf "ssh-version: "
+ssh -V
+
 echo "sshkey-fingerprints:"
-echo "${USER_AUTHORIZED_KEYS_FINGERPRINTS}"
+if [ -n "${USER_AUTHORIZED_KEYS_FINGERPRINTS}" ]; then
+  echo "${USER_AUTHORIZED_KEYS_FINGERPRINTS}"
+fi
 echo "hostkey-fingerprints:"
 echo "$(cat ${DATA_PATH}/hostkeys/hostkey.fingerprints)"
 
