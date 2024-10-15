@@ -14,12 +14,10 @@ LABEL COMMIT_HASH="${COMMIT_HASH}"
 
 ENV DATA_PATH="/data"
 
-COPY sshjumphost /usr/sbin/sshjumphost
-
 RUN set -x && \
     apt-get update && \
     apt-get upgrade -y && \
-    apt-get install -y openssh-server openssh-client iputils-ping iproute2 && \
+    apt-get install -y openssh-server openssh-client iputils-ping iproute2 netcat-openbsd && \
     apt-get install -y ash && \
     \
     systemctl disable ssh && \
@@ -42,13 +40,13 @@ RUN set -x && \
     echo "# NB: set the SSH_SHELL environment variable to enable a login-shell at the sshjumphost." >> /etc/motd && \
     echo "# " >> /etc/motd
 
+COPY sshjumphost /usr/sbin/sshjumphost
+
 RUN set -x && \
     chmod +x /usr/sbin/sshjumphost && \
     mkdir -p ${DATA_PATH}/cakeys && \
     mkdir -p ${DATA_PATH}/hostkeys && \
     mkdir -p ${DATA_PATH}/userkeys
-
-EXPOSE 22/tcp
 
 VOLUME ${DATA_PATH}/hostkeys
 

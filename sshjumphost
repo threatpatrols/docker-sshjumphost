@@ -170,8 +170,8 @@ done
 echo "hostname: $(hostname)"
 echo "ip addr: $(ip addr | grep 'inet ' | grep -v ' lo$' | xargs)"
 echo "username: ${USER_USERNAME}"
-printf "ssh-version: "
-ssh -V
+echo "ssh-version: $(ssh -V 2>&1)"
+
 
 echo "sshkey-fingerprints:"
 if [ -n "${USER_AUTHORIZED_KEYS_FINGERPRINTS}" ]; then
